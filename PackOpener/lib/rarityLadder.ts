@@ -9,9 +9,16 @@ export function getSetFamily(setId: string): SetFamily {
 export const MAINLINE_LADDER_DISPLAY = 'Holo → Double → Ultra → IR → SIR → Gold'
 export const POCKET_LADDER_DISPLAY = '1◊/2◊ → 3◊ → 4◊ → 1★ → 2★/Shiny → 3★ → Crown'
 
+/** Poké Ball reverse holos — all Sword & Shield and Scarlet & Violet era mainline sets */
 export function supportsBallReverseSet(setId: string) {
   const id = setId.trim().toLowerCase()
-  return id === 'sv03.5' || id.includes('151')
+  return /^sv\d/.test(id) || /^swsh\d/.test(id) || id === 'sv03.5' || id.includes('151')
+}
+
+/** Master Ball reverses — Scarlet & Violet era only (sv* sets) */
+export function supportsMasterBallSet(setId: string) {
+  const id = setId.trim().toLowerCase()
+  return /^sv\d/.test(id) || id === 'sv03.5' || id.includes('151')
 }
 
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {

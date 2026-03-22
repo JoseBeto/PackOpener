@@ -6,7 +6,7 @@ import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import CardZoomModal from './CardZoomModal'
 import { getSfxEngine } from '../lib/sfx'
-import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY, supportsBallReverseSet } from '../lib/rarityLadder'
+import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY, supportsBallReverseSet, supportsMasterBallSet } from '../lib/rarityLadder'
 
 type FocusCard = {
   name: string
@@ -15,6 +15,20 @@ type FocusCard = {
 }
 
 type OpeningView = 'select' | 'sleeve' | 'opening' | 'summary'
+
+function specialBadge(special?: string): { text: string; cls: string } | null {
+  if (!special) return null
+  if (special === 'ReverseMasterBall') return { text: 'Master Ball', cls: 'card-badge-masterball' }
+  if (special === 'ReversePokeBall') return { text: 'Poké Ball', cls: 'card-badge-pokeball' }
+  return { text: special, cls: 'card-badge-special' }
+}
+
+function specialLabel(special?: string): string {
+  if (!special) return ''
+  if (special === 'ReverseMasterBall') return 'Master Ball'
+  if (special === 'ReversePokeBall') return 'Poké Ball'
+  return special
+}
 
 type HighlightTone = 'base' | 'holo' | 'ultra' | 'secret'
 function getHighlight(card: Card | null | undefined, setId: string): { label: string | null; tone: HighlightTone } {
@@ -80,6 +94,7 @@ export default function PackOpener() {
   const setLogo = setLogos[setId] || null
   const isPocketSet = getSetFamily(setId) === 'pocket'
   const hasBallReverse = !isPocketSet && supportsBallReverseSet(setId)
+  const hasMasterBall = !isPocketSet && supportsMasterBallSet(setId)
   const currentHighlight = getHighlight(visibleCard, setId)
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
@@ -528,7 +543,7 @@ export default function PackOpener() {
               <div className="pack-stat-list">
                 <div className="pack-stat"><span>Base cards</span><strong>{isPocketSet ? '1◊ + 2◊' : '1 Common + 2 Uncommon'}</strong></div>
                 <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
-                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : hasBallReverse ? 'Poké Ball / Master Ball eligible' : 'Standard reverse'}</strong></div>
+                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : hasBallReverse ? (hasMasterBall ? '~72% std • ~25% Poké Ball • ~3% Master Ball' : '~75% std • ~25% Poké Ball') : 'Standard reverse'}</strong></div>
                 <div className="pack-stat"><span>Total cards</span><strong>6 per pack</strong></div>
               </div>
 
@@ -536,7 +551,7 @@ export default function PackOpener() {
                 {isPocketSet
                   ? 'Pocket tiers: 1◊/2◊ base, 3◊/4◊ core hits, 1★/2★/3★ chase, Crown top tier.'
                   : hasBallReverse
-                  ? 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers. Reverse slots can roll Poké Ball with a rare Master Ball upgrade.'
+                  ? `Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers. Reverse slot: ~72% standard, ~25% Poké Ball${hasMasterBall ? ', ~3% Master Ball' : ''}.`
                   : 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers.'
                 }
               </div>
@@ -811,10 +826,20 @@ export default function PackOpener() {
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                         )}
+                        {visibleCard.special === 'ReversePokeBall' && (
+                          <div className="pokeball-foil-overlay" />
+                        )}
+                        {visibleCard.special === 'ReverseMasterBall' && (
+                          <div className="masterball-foil-overlay" />
+                        )}
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="card-badge card-badge-right">Reverse</div>
                         )}
-                        {visibleCard.special && <div className="card-badge card-badge-special">{visibleCard.special}</div>}
+                        {specialBadge(visibleCard.special) && (
+                          <div className={`card-badge ${specialBadge(visibleCard.special)!.cls}`}>
+                            {specialBadge(visibleCard.special)!.text}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   </div>
@@ -828,7 +853,7 @@ export default function PackOpener() {
                 {visibleCard.rarity || 'Common'}
                 {visibleCard.isReverse ? ' • Reverse' : ''}
                 {visibleCard.isHolo ? ' • Holo' : ''}
-                {visibleCard.special ? ` • ${visibleCard.special}` : ''}
+                {visibleCard.special ? ` • ${specialLabel(visibleCard.special)}` : ''}
               </div>
             </div>
           </div>
@@ -861,7 +886,7 @@ export default function PackOpener() {
                     setFocusCard({
                       name: bestPull.name,
                       image: bestPull.images?.large || bestPull.images?.small,
-                      subtitle: `${bestPull.rarity || 'Common'}${bestPull.isReverse ? ' • Reverse' : ''}${bestPull.isHolo ? ' • Holo' : ''}${bestPull.special ? ` • ${bestPull.special}` : ''}`,
+                      subtitle: `${bestPull.rarity || 'Common'}${bestPull.isReverse ? ' • Reverse' : ''}${bestPull.isHolo ? ' • Holo' : ''}${bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}`,
                     })
                   }
                 >
@@ -876,7 +901,7 @@ export default function PackOpener() {
                     {bestPull.rarity || 'Common'}
                     {bestPull.isReverse ? ' • Reverse' : ''}
                     {bestPull.isHolo ? ' • Holo' : ''}
-                    {bestPull.special ? ` • ${bestPull.special}` : ''}
+                    {bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}
                   </p>
                 </div>
               </motion.div>
@@ -900,7 +925,7 @@ export default function PackOpener() {
                     setFocusCard({
                       name: c.name,
                       image: c.images?.large || c.images?.small,
-                      subtitle: `${c.rarity || 'Common'}${c.isReverse ? ' • Reverse' : ''}${c.isHolo ? ' • Holo' : ''}${c.special ? ` • ${c.special}` : ''}`,
+                      subtitle: `${c.rarity || 'Common'}${c.isReverse ? ' • Reverse' : ''}${c.isHolo ? ' • Holo' : ''}${c.special ? ` • ${specialLabel(c.special)}` : ''}`,
                     })
                   }
                 >
@@ -931,11 +956,17 @@ export default function PackOpener() {
                     {(c.isReverse || (c as any).variants?.reverse) && (
                       <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                     )}
+                    {c.special === 'ReversePokeBall' && <div className="pokeball-foil-overlay" />}
+                    {c.special === 'ReverseMasterBall' && <div className="masterball-foil-overlay" />}
                     {(c.isReverse || (c as any).variants?.reverse) && <div className="card-badge card-badge-right">Reverse</div>}
-                    {c.special && <div className="card-badge card-badge-special">{c.special}</div>}
+                    {specialBadge(c.special) && (
+                      <div className={`card-badge ${specialBadge(c.special)!.cls}`}>
+                        {specialBadge(c.special)!.text}
+                      </div>
+                    )}
                   </div>
                   <div className="card-name">{c.name}</div>
-                  <div className="card-meta">{c.rarity || 'Common'}{c.isReverse ? ' • Reverse' : ''}{c.isHolo ? ' • Holo' : ''}{c.special ? ` • ${c.special}` : ''}</div>
+                  <div className="card-meta">{c.rarity || 'Common'}{c.isReverse ? ' • Reverse' : ''}{c.isHolo ? ' • Holo' : ''}{c.special ? ` • ${specialLabel(c.special)}` : ''}</div>
                 </motion.div>
               ))}
             </div>

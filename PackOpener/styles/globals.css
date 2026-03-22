@@ -230,6 +230,8 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .card-badge{position:absolute;top:8px;left:8px;background:rgba(255,255,255,0.92);color:#111;padding:4px 7px;border-radius:7px;font-size:11px;font-weight:800;z-index:8}
 .card-badge-right{left:auto;right:8px}
 .card-badge-special{background:#ffd54f}
+.card-badge-pokeball{background:linear-gradient(135deg,#e53935 50%,#fff 50%);color:#111;border:1.5px solid #111;text-shadow:none}
+.card-badge-masterball{background:linear-gradient(135deg,#6a1b9a 50%,#ce93d8 50%);color:#fff;border:1.5px solid #4a148c;text-shadow:0 1px 2px rgba(0,0,0,0.6)}
 .card-name{font-weight:700;font-size:0.92rem;text-align:center;line-height:1.25;padding:0 4px;width:100%}
 .card-meta{color:var(--muted);font-size:11px;text-align:center;line-height:1.35;padding:0 6px;width:100%}
 .clickable-card{cursor:zoom-in;transition:transform .15s ease, box-shadow .15s ease}
@@ -417,6 +419,14 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
   opacity: 0.5;
   animation: holoShimmer 1.8s linear infinite;
 }
+
+/* Pokéball foil overlay — rainbow shimmer clipped to repeating Pokéball silhouettes */
+.pokeball-foil-overlay{position:absolute;inset:0;pointer-events:none;z-index:7;opacity:.7;mix-blend-mode:screen;background:linear-gradient(125deg, rgba(255,80,80,0) 0%, rgba(255,80,80,.85) 12%, rgba(255,210,50,.75) 26%, rgba(80,255,130,.75) 40%, rgba(80,190,255,.85) 55%, rgba(180,80,255,.75) 70%, rgba(255,80,150,.75) 84%, rgba(255,80,80,0) 100%);background-size:300% 100%;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='14' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M4 18 A14 14 0 0 1 32 18' fill='white' opacity='.6'/%3E%3Crect x='4' y='16.5' width='28' height='3' fill='white'/%3E%3Ccircle cx='18' cy='18' r='4.5' fill='white'/%3E%3Ccircle cx='18' cy='18' r='2.5' fill='black'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='14' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M4 18 A14 14 0 0 1 32 18' fill='white' opacity='.6'/%3E%3Crect x='4' y='16.5' width='28' height='3' fill='white'/%3E%3Ccircle cx='18' cy='18' r='4.5' fill='white'/%3E%3Ccircle cx='18' cy='18' r='2.5' fill='black'/%3E%3C/svg%3E");-webkit-mask-size:36px 36px;mask-size:36px 36px;-webkit-mask-repeat:repeat;mask-repeat:repeat;animation:ballFoilShimmer 2.2s linear infinite}
+
+/* Master Ball foil overlay — purple shimmer clipped to repeating Master Ball silhouettes */
+.masterball-foil-overlay{position:absolute;inset:0;pointer-events:none;z-index:7;opacity:.75;mix-blend-mode:screen;background:linear-gradient(125deg, rgba(180,80,255,0) 0%, rgba(220,80,255,.9) 12%, rgba(255,150,255,.8) 26%, rgba(200,200,255,.8) 40%, rgba(255,200,255,.88) 55%, rgba(200,100,255,.8) 70%, rgba(140,80,255,.8) 84%, rgba(180,80,255,0) 100%);background-size:300% 100%;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='14' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M4 18 A14 14 0 0 1 32 18' fill='white' opacity='.65'/%3E%3Crect x='4' y='16.5' width='28' height='3' fill='white'/%3E%3Ccircle cx='18' cy='18' r='4.5' fill='white'/%3E%3Ccircle cx='18' cy='18' r='2.5' fill='black'/%3E%3Ctext x='18' y='14' text-anchor='middle' font-size='9' fill='white' font-family='Arial'%3EM%3C%2Ftext%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Ccircle cx='18' cy='18' r='14' fill='none' stroke='white' stroke-width='2'/%3E%3Cpath d='M4 18 A14 14 0 0 1 32 18' fill='white' opacity='.65'/%3E%3Crect x='4' y='16.5' width='28' height='3' fill='white'/%3E%3Ccircle cx='18' cy='18' r='4.5' fill='white'/%3E%3Ccircle cx='18' cy='18' r='2.5' fill='black'/%3E%3Ctext x='18' y='14' text-anchor='middle' font-size='9' fill='white' font-family='Arial'%3EM%3C%2Ftext%3E%3C%2Fsvg%3E");-webkit-mask-size:36px 36px;mask-size:36px 36px;-webkit-mask-repeat:repeat;mask-repeat:repeat;animation:ballFoilShimmer 2.8s linear infinite}
+
+@keyframes ballFoilShimmer{0%{background-position:-150% 0}100%{background-position:150% 0}}
 
 @keyframes holoShimmer{
   0%{background-position: -150% 0}

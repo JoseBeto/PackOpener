@@ -1,4 +1,4 @@
-import { getSetFamily, supportsBallReverseSet } from './rarityLadder'
+import { getSetFamily, supportsBallReverseSet, supportsMasterBallSet } from './rarityLadder'
 
 type Card = {
   id: string
@@ -137,8 +137,18 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
   function applyMainlineReverseFinish(card: Card) {
     if (isPocketSet || !card.isReverse || !supportsBallReverseSet(setId)) return
+    const hasMasterBall = supportsMasterBallSet(setId)
     const roll = Math.random()
-    card.special = roll < 0.04 ? 'ReverseMasterBall' : 'ReversePokeBall'
+    // Real-life approximate distribution per reverse holo slot:
+    //   ~3%  Master Ball (SV era only)
+    //   ~25% Poké Ball
+    //   ~72% standard reverse holo (no special)
+    if (hasMasterBall && roll < 0.03) {
+      card.special = 'ReverseMasterBall'
+    } else if (roll < 0.28) {
+      card.special = 'ReversePokeBall'
+    }
+    // else: standard reverse holo — card.special stays undefined
   }
 
   const rarityText = (card: Card) => (card.rarity || '').toLowerCase()
