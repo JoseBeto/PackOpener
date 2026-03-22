@@ -99,6 +99,7 @@ export default function PackOpener() {
     return [...currentPack].sort((a, b) => getCardRank(b) - getCardRank(a))[0]
   }, [currentPack])
   const bestPullHighlight = getHighlight(bestPull)
+  const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
 
   // Fan-spread variants for summary grid cards
@@ -239,13 +240,14 @@ export default function PackOpener() {
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
         setIsSpotlightMoment(true)
+        sfxRef.current.whoosh()
         if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
           navigator.vibrate(highlight.tone === 'secret' ? [22, 46, 22] : [18])
         }
         spotlightTimeoutRef.current = window.setTimeout(() => {
           setIsSpotlightMoment(false)
           spotlightTimeoutRef.current = null
-        }, 480)
+        }, highlight.tone === 'secret' ? 760 : 620)
       }
 
       flipTimeoutRef.current = null
@@ -587,13 +589,20 @@ export default function PackOpener() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''}`}>
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${isSpotlightMoment && isBigHitTone ? 'opening-big-hit' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
             <span />
             <span />
           </div>
+          {isSpotlightMoment && isBigHitTone && (
+            <>
+              <div className="cinema-bar cinema-bar-top" />
+              <div className="cinema-bar cinema-bar-bottom" />
+              <div className={`jackpot-flash jackpot-flash-${currentHighlight.tone}`} />
+            </>
+          )}
           <div className="flow-header">
             <div className="flow-actions">
               <button className="ghost-button" onClick={() => resetFlow('select')}>
@@ -641,6 +650,7 @@ export default function PackOpener() {
               }}
               aria-label={`Reveal next card. ${remainingCards} card${remainingCards === 1 ? '' : 's'} left after this.`}
             >
+              {isSpotlightMoment && isBigHitTone && <div className={`hit-wave hit-wave-${currentHighlight.tone}`} />}
               {Array.from({ length: Math.min(4, remainingCards) }).map((_, idx) => (
                 <img
                   key={`behind-${idx}`}
@@ -683,7 +693,7 @@ export default function PackOpener() {
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.26, ease: 'easeOut' }}
-                  className="opening-current-card"
+                  className={`opening-current-card ${isSpotlightMoment && isBigHitTone ? 'dramatic-hit' : ''}`}
                 >
                   <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
                   <div className="opening-flip-shell">

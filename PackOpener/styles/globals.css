@@ -145,6 +145,16 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .opening-spotlight::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 44%, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 30%, rgba(7,12,24,0.08) 56%, rgba(0,0,0,0.18));animation:spotlightPulse .48s ease-out}
 .opening-spotlight .opening-stack-hitbox{transform:scale(1.018)}
 .opening-stack-hitbox{transition:transform .28s ease}
+.opening-big-hit::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 44%, rgba(255,255,255,0.24), rgba(255,255,255,0.06) 30%, rgba(7,12,24,0.22) 62%, rgba(0,0,0,0.44));animation:bigHitVignette .7s ease-out;z-index:6}
+.cinema-bar{position:absolute;left:0;right:0;height:22px;background:linear-gradient(180deg, rgba(0,0,0,0.85), rgba(0,0,0,0.35));pointer-events:none;z-index:7;animation:cinemaBars .28s ease-out both}
+.cinema-bar-top{top:0}
+.cinema-bar-bottom{bottom:0;transform:scaleY(-1)}
+.jackpot-flash{position:absolute;inset:0;pointer-events:none;z-index:8;mix-blend-mode:screen;opacity:0;animation:jackpotFlash .62s ease-out}
+.jackpot-flash-ultra{background:radial-gradient(circle at 50% 42%, rgba(206,141,255,0.5), rgba(206,141,255,0.12) 34%, transparent 62%)}
+.jackpot-flash-secret{background:radial-gradient(circle at 50% 42%, rgba(255,231,158,0.58), rgba(255,231,158,0.14) 34%, transparent 62%)}
+.hit-wave{position:absolute;inset:-14%;border-radius:999px;pointer-events:none;z-index:6;animation:hitWave .72s ease-out both}
+.hit-wave-ultra{border:2px solid rgba(206,141,255,0.7);box-shadow:0 0 0 2px rgba(206,141,255,0.2) inset, 0 0 30px rgba(206,141,255,0.34)}
+.hit-wave-secret{border:2px solid rgba(255,226,142,0.82);box-shadow:0 0 0 2px rgba(255,226,142,0.28) inset, 0 0 34px rgba(255,226,142,0.4)}
 .reveal-banner{padding:8px 14px;border-radius:999px;font-size:.8rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.14)}
 .reveal-banner-holo{background:rgba(91,192,235,0.16);color:#b9ecff}
 .reveal-banner-ultra{background:rgba(191,90,242,0.18);color:#f0d5ff}
@@ -156,6 +166,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .opening-back{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.28)}
 .opening-current-card{position:absolute;inset:0;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));box-shadow:0 16px 30px rgba(0,0,0,0.33);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab;isolation:isolate}
 .opening-current-card:active{cursor:grabbing}
+.opening-current-card.dramatic-hit{animation:hitCardImpact .62s cubic-bezier(.2,.8,.2,1)}
 .opening-flip-shell{position:absolute;inset:0;perspective:1200px}
 .opening-flip-card{position:relative;width:100%;height:100%;transform-style:preserve-3d}
 .opening-card-face{position:absolute;inset:0;border-radius:12px;overflow:hidden;backface-visibility:hidden;display:flex;align-items:center;justify-content:center}
@@ -237,6 +248,11 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 @keyframes floatParticle{0%{transform:translate3d(0,0,0) scale(.8);opacity:0}15%{opacity:.9}85%{opacity:.8}100%{transform:translate3d(0,-180px,0) scale(1.15);opacity:0}}
 @keyframes chargePulse{0%{opacity:0;transform:scale(0.98)}55%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.01)}}
 @keyframes spotlightPulse{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+@keyframes jackpotFlash{0%{opacity:0}16%{opacity:1}100%{opacity:0}}
+@keyframes bigHitVignette{0%{opacity:0}24%{opacity:1}100%{opacity:0}}
+@keyframes hitWave{0%{opacity:.86;transform:scale(.58)}100%{opacity:0;transform:scale(1.15)}}
+@keyframes hitCardImpact{0%{transform:scale(1)}32%{transform:scale(1.06)}58%{transform:scale(.985)}100%{transform:scale(1)}}
+@keyframes cinemaBars{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
 
 @media(max-width:800px){
   .site-main{padding:16px}
