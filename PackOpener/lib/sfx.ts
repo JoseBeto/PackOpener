@@ -111,15 +111,23 @@ class PocketSfx {
   }
 
   tearOpen() {
-    this.playNoise({ duration: 0.27, volume: 0.07, highpass: 1450 })
-    this.playNoise({ duration: 0.18, volume: 0.05, highpass: 2200, delay: 0.05 })
-    this.playTone({ frequency: 360, frequencyEnd: 190, duration: 0.22, type: 'sawtooth', volume: 0.035 })
-    this.playTone({ frequency: 520, frequencyEnd: 260, duration: 0.16, type: 'triangle', volume: 0.026, delay: 0.06 })
+    // Initial crack/snap
+    this.playNoise({ duration: 0.08, volume: 0.085, highpass: 3200 })
+    this.playTone({ frequency: 350, frequencyEnd: 240, duration: 0.1, type: 'sawtooth', volume: 0.04 })
+    // Main ripping sound
+    this.playNoise({ duration: 0.34, volume: 0.08, highpass: 1550, delay: 0.02 })
+    this.playNoise({ duration: 0.22, volume: 0.065, highpass: 2400, delay: 0.12 })
+    // Tonal component (crackle)
+    this.playTone({ frequency: 420, frequencyEnd: 180, duration: 0.3, type: 'sawtooth', volume: 0.045, delay: 0.04 })
+    this.playTone({ frequency: 580, frequencyEnd: 320, duration: 0.2, type: 'triangle', volume: 0.032, delay: 0.1 })
   }
 
   packPop() {
-    this.playTone({ frequency: 320, frequencyEnd: 210, duration: 0.11, type: 'triangle', volume: 0.03 })
-    this.playNoise({ duration: 0.1, volume: 0.026, highpass: 1000, delay: 0.01 })
+    // High pitch punch
+    this.playTone({ frequency: 360, frequencyEnd: 220, duration: 0.14, type: 'square', volume: 0.038 })
+    // Retro 8-bit style pop
+    this.playTone({ frequency: 220, frequencyEnd: 100, duration: 0.11, type: 'triangle', volume: 0.028, delay: 0.04 })
+    this.playNoise({ duration: 0.12, volume: 0.032, highpass: 2000, delay: 0.01 })
   }
 
   whoosh() {

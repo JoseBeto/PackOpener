@@ -624,6 +624,11 @@ export default function PackOpener() {
                 animate={isSleeveRipping ? { opacity: [0, 0.95, 0], scale: [0.6, 1.08, 1.2] } : { opacity: 0, scale: 0.6 }}
                 transition={{ duration: 0.34, ease: 'easeOut' }}
               />
+              <motion.div
+                className="sleeve-rip-glow"
+                animate={isSleeveRipping ? { opacity: [0, 1, 0], scale: [0.8, 1, 0.95] } : { opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.32, ease: 'easeOut' }}
+              />
               <div className="sleeve-rip-shards" aria-hidden="true">
                 <span />
                 <span />
@@ -645,7 +650,7 @@ export default function PackOpener() {
                     <img src="/card-back.png" alt="deck" className="deck-back" />
                   </motion.div>
                 </div>
-                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: [0, -148, -136], y: [0, -14, -10] } : { rotateX: 0, y: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
+                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: [0, -164, -188], rotateZ: [0, 8, 16], y: [0, -18, -64], scale: [1, 1.04, 1.06], opacity: [1, 1, 0.3] } : { rotateX: 0, rotateZ: 0, y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.56, ease: [0.34, 1.56, 0.64, 1] }} />
                 <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.15, 1.16, 1], opacity: [0.4, 1, 0.96], y: [0, -2, 0] } : { scaleX: 0.2, opacity: 0.55, y: 0 }} transition={{ duration: 0.34, delay: isSleeveOpening ? 0.06 : 0, ease: 'easeOut' }} />
                 <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '130%'], opacity: [0, 0.85, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.58, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
                 <motion.div
