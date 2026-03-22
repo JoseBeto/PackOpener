@@ -1,4 +1,4 @@
-import { getSetFamily } from './rarityLadder'
+import { getSetFamily, supportsBallReverseSet } from './rarityLadder'
 
 type Card = {
   id: string
@@ -135,6 +135,12 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     return fallback ? fallback() : pickByRarity()
   }
 
+  function applyMainlineReverseFinish(card: Card) {
+    if (isPocketSet || !card.isReverse || !supportsBallReverseSet(setId)) return
+    const roll = Math.random()
+    card.special = roll < 0.04 ? 'ReverseMasterBall' : 'ReversePokeBall'
+  }
+
   const rarityText = (card: Card) => (card.rarity || '').toLowerCase()
   const isSpecialIllustration = (card: Card) => rarityText(card).includes('special illustration')
   const isIllustration = (card: Card) => rarityText(card).includes('illustration') && !isSpecialIllustration(card)
@@ -154,6 +160,10 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isPocketOneShiny = (card: Card) => rarityText(card).includes('one shiny')
   const isPocketTwoShiny = (card: Card) => rarityText(card).includes('two shiny')
   const isPocketCrown = (card: Card) => rarityText(card).includes('crown')
+  const canBeReverse = (card: Card) => {
+    const reverseFlag = (card.variants as any)?.reverse
+    return reverseFlag !== false
+  }
   const isBaseRareFamily = (card: Card) => {
     const text = rarityText(card)
     if (!text.includes('rare')) return false
@@ -240,18 +250,19 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
     let reverseCard: Card
     if (chosenRevRarity === 'Rare') {
-      reverseCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'))
+      reverseCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c)), () => pickByRarity('Rare'))
     } else if (chosenRevRarity === 'oneDiamond') {
-      reverseCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c)), () => pickByRarity('Common'))
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c) && canBeReverse(c)), () => pickByRarity('Common'))
     } else if (chosenRevRarity === 'twoDiamond') {
-      reverseCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon'))
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c) && canBeReverse(c)), () => pickByRarity('Uncommon'))
     } else if (chosenRevRarity === 'threeDiamond') {
-      reverseCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c) && canBeReverse(c)), () => pickByRarity('Rare'))
     } else {
-      reverseCard = pickByRarity(chosenRevRarity)
+      reverseCard = pickFromCandidates(pool.filter((c) => rarityToKey(c.rarity) === chosenRevRarity && canBeReverse(c)), () => pickByRarity(chosenRevRarity))
     }
     reverseCard.isReverse = true
     reverseCard.isHolo = true
+    applyMainlineReverseFinish(reverseCard)
     result.push(reverseCard)
 
      // Card 10: Holo-or-better rare slot (weighted distribution)
@@ -409,12 +420,13 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          }
        }
       if (chosenBonusRevRarity === 'Rare') {
-        bonusCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'))
+        bonusCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c)), () => pickByRarity('Rare'))
       } else {
-        bonusCard = pickByRarity(chosenBonusRevRarity)
+        bonusCard = pickFromCandidates(pool.filter((c) => rarityToKey(c.rarity) === chosenBonusRevRarity && canBeReverse(c)), () => pickByRarity(chosenBonusRevRarity))
       }
       bonusCard.isReverse = true
       bonusCard.isHolo = true
+      applyMainlineReverseFinish(bonusCard)
      } else if (chosenBonusCategory === 'reversePocket') {
        const pocketReverseWeights = { oneDiamond: 0.46, twoDiamond: 0.39, threeDiamond: 0.15 }
        const pocketKeys = Object.keys(pocketReverseWeights)
@@ -431,11 +443,11 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          }
        }
        if (chosenPocketBonus === 'oneDiamond') {
-         bonusCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c)), () => pickByRarity('Common'))
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c) && canBeReverse(c)), () => pickByRarity('Common'))
        } else if (chosenPocketBonus === 'twoDiamond') {
-         bonusCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon'))
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c) && canBeReverse(c)), () => pickByRarity('Uncommon'))
        } else {
-         bonusCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c) && canBeReverse(c)), () => pickByRarity('Rare'))
        }
        bonusCard.isReverse = true
        bonusCard.isHolo = true

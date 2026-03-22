@@ -6,7 +6,7 @@ import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import CardZoomModal from './CardZoomModal'
 import { getSfxEngine } from '../lib/sfx'
-import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY } from '../lib/rarityLadder'
+import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY, supportsBallReverseSet } from '../lib/rarityLadder'
 
 type FocusCard = {
   name: string
@@ -79,6 +79,7 @@ export default function PackOpener() {
   const setDisplayName = setNames[setId] || setId.toUpperCase()
   const setLogo = setLogos[setId] || null
   const isPocketSet = getSetFamily(setId) === 'pocket'
+  const hasBallReverse = !isPocketSet && supportsBallReverseSet(setId)
   const currentHighlight = getHighlight(visibleCard, setId)
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
@@ -527,12 +528,15 @@ export default function PackOpener() {
               <div className="pack-stat-list">
                 <div className="pack-stat"><span>Base cards</span><strong>{isPocketSet ? '1◊ + 2◊' : '1 Common + 2 Uncommon'}</strong></div>
                 <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
+                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : hasBallReverse ? 'Poké Ball / Master Ball eligible' : 'Standard reverse'}</strong></div>
                 <div className="pack-stat"><span>Total cards</span><strong>6 per pack</strong></div>
               </div>
 
               <div className="selected-pack-legend">
                 {isPocketSet
                   ? 'Pocket tiers: 1◊/2◊ base, 3◊/4◊ core hits, 1★/2★/3★ chase, Crown top tier.'
+                  : hasBallReverse
+                  ? 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers. Reverse slots can roll Poké Ball with a rare Master Ball upgrade.'
                   : 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers.'
                 }
               </div>

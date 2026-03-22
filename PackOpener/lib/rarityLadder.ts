@@ -9,6 +9,11 @@ export function getSetFamily(setId: string): SetFamily {
 export const MAINLINE_LADDER_DISPLAY = 'Holo → Double → Ultra → IR → SIR → Gold'
 export const POCKET_LADDER_DISPLAY = '1◊/2◊ → 3◊ → 4◊ → 1★ → 2★/Shiny → 3★ → Crown'
 
+export function supportsBallReverseSet(setId: string) {
+  const id = setId.trim().toLowerCase()
+  return id === 'sv03.5' || id.includes('151')
+}
+
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {
   const rarity = (card.rarity || '').toLowerCase()
   const special = (card.special || '').toLowerCase()
@@ -27,7 +32,9 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
   if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
   if (special.includes('illustration') || rarity.includes('illustration')) return 82
   if (rarity.includes('ultra')) return 68
+  if (special.includes('reversemasterball')) return 62
   if (special.includes('doublerare') || rarity.includes('double rare')) return 58
+  if (special.includes('reversepokeball')) return 49
   if (card.isReverse) return 46
   if (card.isHolo || rarity.includes('holo')) return 40
   if (rarity.includes('rare')) return 30
