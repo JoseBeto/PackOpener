@@ -41,6 +41,23 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 
 .pack-opener-wrap{width:100%;display:flex;flex-direction:column;gap:16px}
 .flow-shell{width:100%;border:1px solid rgba(255,255,255,0.08);background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));border-radius:18px;padding:clamp(18px, 3vw, 28px);box-shadow:0 18px 38px rgba(0,0,0,0.22)}
+.premium-stage{position:relative;overflow:hidden;background:radial-gradient(420px 240px at 50% 18%, rgba(255,255,255,0.07), transparent 68%),radial-gradient(650px 380px at 50% 110%, rgba(6,182,212,0.12), transparent 72%),linear-gradient(180deg, rgba(10,16,30,0.98), rgba(7,12,24,0.96))}
+.premium-stage::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent 24%, transparent 76%, rgba(255,255,255,0.02));pointer-events:none}
+.premium-stage-select{min-height:680px}
+.premium-stage-opening{min-height:720px}
+.premium-stage-summary{min-height:760px}
+.premium-tone-holo{box-shadow:0 18px 38px rgba(91,192,235,0.12)}
+.premium-tone-ultra{box-shadow:0 18px 38px rgba(191,90,242,0.14)}
+.premium-tone-secret{box-shadow:0 18px 38px rgba(255,208,92,0.16)}
+.stage-spotlight{position:absolute;border-radius:50%;filter:blur(14px);pointer-events:none;opacity:.9}
+.stage-spotlight-center{width:420px;height:260px;left:50%;top:120px;transform:translateX(-50%);background:radial-gradient(circle, rgba(120,232,255,0.22), rgba(120,232,255,0.08) 34%, transparent 72%)}
+.stage-spotlight-left{width:320px;height:220px;left:-70px;top:140px;background:radial-gradient(circle, rgba(120,232,255,0.16), transparent 74%)}
+.stage-spotlight-right{width:320px;height:220px;right:-70px;top:200px;background:radial-gradient(circle, rgba(173,216,255,0.14), transparent 74%)}
+.stage-particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.stage-particles span{position:absolute;width:4px;height:4px;border-radius:50%;background:rgba(216,244,255,0.7);box-shadow:0 0 10px rgba(173,216,255,0.3);animation:floatParticle 7s linear infinite}
+.stage-particles span:nth-child(1){left:16%;top:72%;animation-duration:8s;animation-delay:-2s}
+.stage-particles span:nth-child(2){left:52%;top:66%;animation-duration:6.8s;animation-delay:-4s}
+.stage-particles span:nth-child(3){left:80%;top:76%;animation-duration:7.6s;animation-delay:-1s}
 .flow-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
 .flow-meta{color:var(--muted);font-size:0.9rem;font-weight:600}
 .ghost-button{padding:11px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:var(--text);font:inherit;font-weight:700;cursor:pointer;transition:transform .15s ease, border-color .15s ease, background .15s ease;min-height:44px}
@@ -81,13 +98,14 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .sleeve-copy{text-align:center;max-width:560px}
 .sleeve-copy h3{margin:12px 0 8px;font-size:clamp(1.4rem, 3vw, 2rem)}
 .sleeve-copy p{margin:0;color:var(--muted);line-height:1.5}
-.sleeve-stage{position:relative;width:min(82vw, 300px);aspect-ratio:220/320;border:none;background:transparent;padding:0;cursor:pointer}
-.sleeve-shell{position:absolute;inset:0;perspective:900px}
+.sleeve-stage{position:relative;width:min(82vw, 300px);aspect-ratio:220/320;border:none;background:transparent;padding:0;cursor:pointer;transform-style:preserve-3d}
+.sleeve-shell{position:absolute;inset:0;perspective:900px;transform-style:preserve-3d}
 .sleeve-pocket{position:absolute;left:50%;top:40px;width:74%;height:208px;transform:translateX(-50%);z-index:1;pointer-events:none;display:flex;align-items:flex-end;justify-content:center;overflow:visible}
 .sleeve-body{position:absolute;inset:30px 0 0;background:linear-gradient(180deg, #13284a 0%, #091221 100%);border-radius:18px;box-shadow:0 22px 40px rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden;isolation:isolate;z-index:2}
 .sleeve-body::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg, rgba(6,182,212,0.18), transparent 36%, rgba(255,255,255,0.04) 70%, transparent)}
 .sleeve-flap{position:absolute;top:0;left:0;right:0;height:82px;background:linear-gradient(180deg, #1d3b6f 0%, #112342 100%);border-radius:20px 20px 16px 16px;border:1px solid rgba(255,255,255,0.14);transform-origin:top center;box-shadow:0 14px 24px rgba(0,0,0,0.18);z-index:4}
 .sleeve-rip{position:absolute;top:74px;left:18px;right:18px;height:2px;background:linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.9) 12%, rgba(139,233,245,0.95) 50%, rgba(255,255,255,0.9) 88%, transparent 100%);transform-origin:center;z-index:5;filter:drop-shadow(0 0 6px rgba(139,233,245,0.45))}
+.sleeve-foil-sheen{position:absolute;top:24px;left:18px;width:50px;height:240px;background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.75), rgba(120,232,255,0));transform:skewX(-18deg);filter:blur(1px);mix-blend-mode:screen;pointer-events:none;z-index:6}
 .sleeve-mouth-cover{position:absolute;top:72px;left:14px;right:14px;height:34px;background:linear-gradient(180deg, #17305a 0%, #10213d 100%);border-radius:0 0 14px 14px;z-index:3;box-shadow:0 10px 18px rgba(0,0,0,0.24)}
 .sleeve-brand,.sleeve-packtype,.sleeve-hint{position:relative;z-index:1}
 .sleeve-brand{font-size:1.15rem;font-weight:900;letter-spacing:.03em;color:#e5faff;text-align:center;line-height:1.12;padding:0 18px;text-wrap:balance;max-width:100%}
@@ -97,15 +115,31 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .deck-back{box-shadow:0 12px 26px rgba(0,0,0,0.32);border-radius:12px}
 .opening-stage{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;min-height:min(58vh, 620px);justify-content:center}
 .opening-hint{font-size:0.85rem;color:var(--muted);text-align:center}
+.reveal-banner{padding:8px 14px;border-radius:999px;font-size:.8rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.14)}
+.reveal-banner-holo{background:rgba(91,192,235,0.16);color:#b9ecff}
+.reveal-banner-ultra{background:rgba(191,90,242,0.18);color:#f0d5ff}
+.reveal-banner-secret{background:rgba(255,208,92,0.18);color:#ffeeb8}
 .opening-stack-hitbox{position:relative;width:min(80vw, 270px);aspect-ratio:195/270;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
 .opening-back{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.28)}
 .opening-current-card{position:absolute;inset:0;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));box-shadow:0 16px 30px rgba(0,0,0,0.33);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab}
 .opening-current-card:active{cursor:grabbing}
+.card-burst{position:absolute;inset:-16%;pointer-events:none;filter:blur(24px);opacity:.55;mix-blend-mode:screen}
+.card-burst-base{display:none}
+.card-burst-holo{background:radial-gradient(circle, rgba(101,214,255,0.55), transparent 60%)}
+.card-burst-ultra{background:radial-gradient(circle, rgba(187,109,255,0.6), transparent 62%)}
+.card-burst-secret{background:radial-gradient(circle, rgba(255,214,102,0.72), transparent 62%)}
 .opening-card-info{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(80vw, 300px);min-height:56px}
 .opened-cards-wrap{display:flex;flex-direction:column;gap:16px}
 .summary-heading h3{margin:0 0 6px;font-size:1.08rem}
 .summary-heading p{margin:0;color:var(--muted);font-size:0.87rem}
 .summary-actions{display:flex;gap:12px;flex-wrap:wrap}
+.best-pull-spotlight{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,240px);gap:18px;align-items:center;padding:18px;border-radius:20px;border:1px solid rgba(255,255,255,0.1);background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));box-shadow:0 20px 40px rgba(0,0,0,0.22)}
+.best-pull-holo{box-shadow:0 18px 34px rgba(91,192,235,0.12)}
+.best-pull-ultra{box-shadow:0 18px 34px rgba(191,90,242,0.12)}
+.best-pull-secret{box-shadow:0 18px 34px rgba(255,208,92,0.14)}
+.best-pull-copy h4{margin:14px 0 8px;font-size:1.35rem}
+.best-pull-copy p{margin:0;color:var(--muted);line-height:1.45}
+.best-pull-card{max-width:220px;justify-self:end;width:100%}
 .opened-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(165px, calc(50vw - 28px)),1fr));gap:16px;align-items:start}
 .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:720px;margin:0 auto;width:100%}
 .card-shell{width:100%;max-width:210px;justify-self:center;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;background:transparent}
@@ -158,12 +192,16 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .zoom-image{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center center;transition:transform .15s ease}
 .zoom-no-image{color:var(--muted)}
 
+@keyframes floatParticle{0%{transform:translate3d(0,0,0) scale(.8);opacity:0}15%{opacity:.9}85%{opacity:.8}100%{transform:translate3d(0,-180px,0) scale(1.15);opacity:0}}
+
 @media(max-width:800px){
   .site-main{padding:16px}
   .hero,.profile-wrap{padding:18px}
   .landing-grid{grid-template-columns:1fr}
   .control-row{grid-template-columns:1fr}
   .status-panel{padding-top:2px}
+  .best-pull-spotlight{grid-template-columns:1fr}
+  .best-pull-card{justify-self:center}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:660px}
   .zoom-view{min-height:280px}
 }
@@ -175,6 +213,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
   .hero{text-align:left}
   .hero p{margin-left:0;margin-right:0}
   .flow-header{align-items:flex-start;flex-direction:column}
+  .stage-spotlight-center{width:320px;height:220px;top:110px}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:none}
   .showcase-grid{grid-template-columns:1fr}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { AnimatePresence, motion, type PanInfo } from 'framer-motion'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { AnimatePresence, animate, motion, useMotionValue, useSpring, useTransform, type PanInfo } from 'framer-motion'
 import PackSelector from './PackSelector'
 import packs from '../data/packs.json'
 import { simulatePack, type Card } from '../lib/simulator'
@@ -13,6 +13,36 @@ type FocusCard = {
 }
 
 type OpeningView = 'select' | 'sleeve' | 'opening' | 'summary'
+
+type HighlightTone = 'base' | 'holo' | 'ultra' | 'secret'
+
+function getCardRank(card?: Card | null) {
+  if (!card) return 0
+  const rarity = (card.rarity || '').toLowerCase()
+  const special = (card.special || '').toLowerCase()
+
+  if (special.includes('godpack')) return 100
+  if (special.includes('secret') || rarity.includes('hyper') || rarity.includes('secret')) return 95
+  if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
+  if (special.includes('illustration') || rarity.includes('illustration')) return 82
+  if (special.includes('doublerare') || rarity.includes('double rare')) return 74
+  if (rarity.includes('ultra')) return 68
+  if (card.isReverse) return 46
+  if (card.isHolo || rarity.includes('holo')) return 40
+  if (rarity.includes('rare')) return 30
+  if (rarity.includes('uncommon')) return 18
+  return 10
+}
+
+function getHighlight(card?: Card | null): { label: string | null; tone: HighlightTone } {
+  const rank = getCardRank(card)
+  if (!card || rank < 40) return { label: null, tone: 'base' }
+  if (rank >= 95) return { label: 'Secret Hit', tone: 'secret' }
+  if (rank >= 82) return { label: 'Major Pull', tone: 'secret' }
+  if (rank >= 68) return { label: 'Ultra Rare', tone: 'ultra' }
+  if (rank >= 46) return { label: 'Shiny Pull', tone: 'holo' }
+  return { label: 'Holo Hit', tone: 'holo' }
+}
 
 export default function PackOpener() {
   const [setId, setSetId] = useState('sv10')
@@ -33,12 +63,53 @@ export default function PackOpener() {
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveTimeoutRef = useRef<number | null>(null)
+  const dragX = useMotionValue(0)
+  const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
+  const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
+
+  // Sleeve parallax tilt
+  const sleeveMxRaw = useMotionValue(0)
+  const sleeveMxRawY = useMotionValue(0)
+  const sleeveMx = useSpring(sleeveMxRaw, { stiffness: 160, damping: 22 })
+  const sleeveMy = useSpring(sleeveMxRawY, { stiffness: 160, damping: 22 })
+  const sleeveRotX = useTransform(sleeveMy, [-0.5, 0.5], [16, -16])
+  const sleeveRotY = useTransform(sleeveMx, [-0.5, 0.5], [-12, 12])
 
   const hasActiveOpening = view === 'opening' && currentPack.length > 0
   const visibleCard = hasActiveOpening ? currentPack[revealIndex] : null
   const remainingCards = hasActiveOpening ? currentPack.length - revealIndex - 1 : 0
   const packTypeLabel = packType === 'premium' ? 'Premium Pack' : 'Standard Pack'
   const setDisplayName = setNames[setId] || setId.toUpperCase()
+  const currentHighlight = getHighlight(visibleCard)
+  const bestPull = useMemo(() => {
+    if (currentPack.length === 0) return null
+    return [...currentPack].sort((a, b) => getCardRank(b) - getCardRank(a))[0]
+  }, [currentPack])
+  const bestPullHighlight = getHighlight(bestPull)
+
+  // Fan-spread variants for summary grid cards
+  const fanVariants = {
+    hidden: (i: number) => ({
+      opacity: 0,
+      scale: 0.72,
+      rotate: (i - 2.5) * 14,
+      x: (i - 2.5) * 18,
+      y: 56,
+    }),
+    visible: (i: number) => ({
+      opacity: 1,
+      scale: 1,
+      rotate: 0,
+      x: 0,
+      y: 0,
+      transition: {
+        type: 'spring' as const,
+        stiffness: 300,
+        damping: 24,
+        delay: 0.12 + i * 0.07,
+      },
+    }),
+  }
 
   // auto-load cards when set changes
   useEffect(() => {
@@ -97,6 +168,10 @@ export default function PackOpener() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    dragX.set(0)
+  }, [dragX, revealIndex, view])
 
   async function loadPool() {
     setLoading(true)
@@ -195,6 +270,9 @@ export default function PackOpener() {
 
     if (shouldReveal) {
       revealNext(info.offset.x < 0 ? 1 : -1)
+    } else {
+      // Soft spring snap-back when card is released near center
+      animate(dragX, 0, { type: 'spring', stiffness: 280, damping: 22, mass: 0.8 })
     }
 
     setTimeout(() => {
@@ -219,7 +297,14 @@ export default function PackOpener() {
   return (
     <div className="pack-opener-wrap">
       {view === 'select' && (
-        <section className="flow-shell landing-shell">
+        <section className="flow-shell landing-shell premium-stage premium-stage-select">
+          <div className="stage-spotlight stage-spotlight-left" />
+          <div className="stage-spotlight stage-spotlight-right" />
+          <div className="stage-particles" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <div className="landing-copy">
             <span className="landing-eyebrow">Choose your next pack</span>
             <h2 className="landing-title">Pick a set, load the sleeve, and crack it open.</h2>
@@ -273,7 +358,13 @@ export default function PackOpener() {
       )}
 
       {view === 'sleeve' && currentPack.length > 0 && (
-        <section className="flow-shell sleeve-view-shell">
+        <section className="flow-shell sleeve-view-shell premium-stage premium-stage-sleeve">
+          <div className="stage-spotlight stage-spotlight-center" />
+          <div className="stage-particles" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <div className="flow-header">
             <button className="ghost-button" onClick={() => resetFlow('select')}>
               Choose Another Set
@@ -295,9 +386,26 @@ export default function PackOpener() {
               disabled={isSleeveOpening}
               whileHover={{ scale: isSleeveOpening ? 1 : 1.01 }}
               whileTap={{ scale: isSleeveOpening ? 1 : 0.99 }}
+              animate={isSleeveOpening ? { rotateZ: [0, -1.2, 1.2, -0.8, 0] } : { rotateZ: 0 }}
+              transition={{ duration: 0.52, ease: 'easeInOut' }}
               aria-label="Open pack sleeve"
+              onPointerMove={(e) => {
+                if (isSleeveOpening) return
+                const rect = e.currentTarget.getBoundingClientRect()
+                sleeveMxRaw.set(((e.clientX - rect.left) / rect.width - 0.5))
+                sleeveMxRawY.set(((e.clientY - rect.top) / rect.height - 0.5))
+              }}
+              onPointerLeave={() => {
+                sleeveMxRaw.set(0)
+                sleeveMxRawY.set(0)
+              }}
             >
-              <motion.div className="sleeve-shell" animate={isSleeveOpening ? { y: 18 } : { y: 0 }} transition={{ duration: 0.48 }}>
+              <motion.div
+                className="sleeve-shell"
+                animate={isSleeveOpening ? { y: 18 } : { y: 0 }}
+                transition={{ duration: 0.48 }}
+                style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
+              >
                 <div className="sleeve-pocket" aria-hidden="true">
                   <motion.div
                     className="sleeve-deck"
@@ -309,6 +417,7 @@ export default function PackOpener() {
                 </div>
                 <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: -135, y: -12 } : { rotateX: 0, y: 0 }} transition={{ duration: 0.45 }} />
                 <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: 1, opacity: 1 } : { scaleX: 0.2, opacity: 0.55 }} transition={{ duration: 0.28, delay: isSleeveOpening ? 0.12 : 0 }} />
+                <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '130%'], opacity: [0, 0.85, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.58, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
                 <motion.div
                   className="sleeve-mouth-cover"
                   animate={isSleeveOpening ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
@@ -326,7 +435,13 @@ export default function PackOpener() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className="flow-shell opening-view-shell">
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone}`}>
+          <div className="stage-spotlight stage-spotlight-center" />
+          <div className="stage-particles" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
           <div className="flow-header">
             <button className="ghost-button" onClick={() => resetFlow('select')}>
               Choose Another Set
@@ -336,6 +451,16 @@ export default function PackOpener() {
 
           <div className="opening-stage">
             <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>
+            {currentHighlight.label && (
+              <motion.div
+                className={`reveal-banner reveal-banner-${currentHighlight.tone}`}
+                initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.25 }}
+              >
+                {currentHighlight.label}
+              </motion.div>
+            )}
 
             <div
               className="opening-stack-hitbox"
@@ -362,7 +487,10 @@ export default function PackOpener() {
                 initial={false}
                 custom={swipeDirection}
                 mode="wait"
-                onExitComplete={() => setIsTransitioning(false)}
+                onExitComplete={() => {
+                  dragX.set(0)
+                  setIsTransitioning(false)
+                }}
               >
                 <motion.div
                   key={`${visibleCard.id}-${revealIndex}`}
@@ -374,8 +502,10 @@ export default function PackOpener() {
                   }}
                   drag="x"
                   dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.18}
+                  dragElastic={0.22}
                   dragMomentum={false}
+                  dragTransition={{ bounceStiffness: 260, bounceDamping: 20 }}
+                  style={{ x: dragX, rotate: dragRotate }}
                   onDragStart={() => {
                     suppressClickRef.current = true
                   }}
@@ -386,6 +516,7 @@ export default function PackOpener() {
                   transition={{ duration: 0.26, ease: 'easeOut' }}
                   className="opening-current-card"
                 >
+                  <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
                   {visibleCard.images?.small ? (
                     <>
                       {!loadedImages[visibleCard.id] && <div className="card-status">Loading...</div>}
@@ -434,7 +565,8 @@ export default function PackOpener() {
       )}
 
       {view === 'summary' && currentPack.length > 0 && (
-        <section className="flow-shell summary-view-shell" ref={summaryRef}>
+        <section className="flow-shell summary-view-shell premium-stage premium-stage-summary" ref={summaryRef}>
+          <div className="stage-spotlight stage-spotlight-center" />
           <div className="flow-header">
             <div className="flow-meta">Pack complete • {currentPack.length} cards pulled</div>
           </div>
@@ -445,6 +577,40 @@ export default function PackOpener() {
               <p>Review every card from this pack, zoom in on hits, then open another or pick a new set.</p>
             </div>
 
+            {bestPull && (
+              <motion.div
+                className={`best-pull-spotlight best-pull-${bestPullHighlight.tone}`}
+                initial={{ opacity: 0, y: 24, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35 }}
+              >
+                <div className="best-pull-copy">
+                  <span className="landing-eyebrow">Best pull</span>
+                  <h4>{bestPull.name}</h4>
+                  <p>
+                    {bestPull.rarity || 'Common'}
+                    {bestPull.isReverse ? ' • Reverse' : ''}
+                    {bestPull.isHolo ? ' • Holo' : ''}
+                    {bestPull.special ? ` • ${bestPull.special}` : ''}
+                  </p>
+                </div>
+                <div
+                  className="best-pull-card clickable-card"
+                  onClick={() =>
+                    setFocusCard({
+                      name: bestPull.name,
+                      image: bestPull.images?.large || bestPull.images?.small,
+                      subtitle: `${bestPull.rarity || 'Common'}${bestPull.isReverse ? ' • Reverse' : ''}${bestPull.isHolo ? ' • Holo' : ''}${bestPull.special ? ` • ${bestPull.special}` : ''}`,
+                    })
+                  }
+                >
+                  <div className="summary-card-face">
+                    {bestPull.images?.small ? <img src={bestPull.images.small} alt={bestPull.name} className="card-art" draggable={false} /> : <div className="card-status">No Image</div>}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             <div className="summary-actions">
               <button className="button" onClick={preparePack}>Open Another Pack</button>
               <button className="ghost-button" onClick={() => resetFlow('select')}>Select New Set</button>
@@ -454,9 +620,10 @@ export default function PackOpener() {
               {currentPack.map((c, i) => (
                 <motion.div
                   key={`${c.id}-${i}`}
-                  initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
+                  custom={i}
+                  variants={fanVariants}
+                  initial="hidden"
+                  animate="visible"
                   className="card-shell clickable-card"
                   onClick={() =>
                     setFocusCard({
