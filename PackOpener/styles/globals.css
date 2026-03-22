@@ -59,9 +59,11 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .stage-particles span:nth-child(2){left:52%;top:66%;animation-duration:6.8s;animation-delay:-4s}
 .stage-particles span:nth-child(3){left:80%;top:76%;animation-duration:7.6s;animation-delay:-1s}
 .flow-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.flow-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .flow-meta{color:var(--muted);font-size:0.9rem;font-weight:600}
 .ghost-button{padding:11px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:var(--text);font:inherit;font-weight:700;cursor:pointer;transition:transform .15s ease, border-color .15s ease, background .15s ease;min-height:44px}
 .ghost-button:hover{transform:translateY(-1px);border-color:rgba(6,182,212,0.45);background:rgba(6,182,212,0.12)}
+.sound-toggle{min-width:108px;text-align:center}
 .landing-shell{display:flex;flex-direction:column;gap:20px;align-items:center}
 .landing-copy{max-width:760px;width:100%;margin:0 auto;text-align:center}
 .landing-eyebrow{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(6,182,212,0.14);border:1px solid rgba(6,182,212,0.24);color:#8be9f5;font-size:0.8rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase}
@@ -102,6 +104,8 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .sleeve-copy p{margin:0;color:var(--muted);line-height:1.5}
 .sleeve-stage{position:relative;width:min(82vw, 300px);aspect-ratio:220/320;border:none;background:transparent;padding:0;cursor:pointer}
 .sleeve-shell{position:absolute;inset:0;perspective:900px}
+.sleeve-charge-aura{position:absolute;inset:-12%;border-radius:28px;pointer-events:none;z-index:0;background:radial-gradient(circle, rgba(120,232,255,0.32), rgba(120,232,255,0.07) 44%, transparent 72%);filter:blur(2px)}
+.sleeve-is-charging::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 52%, rgba(120,232,255,0.12), rgba(7,12,24,0.16) 58%, rgba(0,0,0,0.35));animation:chargePulse .32s ease-out}
 .sleeve-pocket{position:absolute;left:50%;top:40px;width:74%;height:208px;transform:translateX(-50%);z-index:1;pointer-events:none;display:flex;align-items:flex-end;justify-content:center;overflow:visible}
 .sleeve-body{position:absolute;inset:30px 0 0;background:linear-gradient(180deg, #13284a 0%, #091221 100%);border-radius:18px;box-shadow:0 22px 40px rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.14);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden;isolation:isolate;z-index:2}
 .sleeve-body::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg, rgba(6,182,212,0.18), transparent 36%, rgba(255,255,255,0.04) 70%, transparent)}
@@ -118,14 +122,26 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .deck-back{box-shadow:0 12px 26px rgba(0,0,0,0.32);border-radius:12px}
 .opening-stage{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0;min-height:min(58vh, 620px);justify-content:center;text-align:center}
 .opening-hint{font-size:0.85rem;color:var(--muted);text-align:center}
+.opening-spotlight::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 44%, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 30%, rgba(7,12,24,0.08) 56%, rgba(0,0,0,0.18));animation:spotlightPulse .48s ease-out}
+.opening-spotlight .opening-stack-hitbox{transform:scale(1.018)}
+.opening-stack-hitbox{transition:transform .28s ease}
 .reveal-banner{padding:8px 14px;border-radius:999px;font-size:.8rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.14)}
 .reveal-banner-holo{background:rgba(91,192,235,0.16);color:#b9ecff}
 .reveal-banner-ultra{background:rgba(191,90,242,0.18);color:#f0d5ff}
 .reveal-banner-secret{background:rgba(255,208,92,0.18);color:#ffeeb8}
+.spotlight-pill{padding:7px 12px;border-radius:999px;font-size:.74rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.2)}
+.spotlight-pill-ultra{background:rgba(191,90,242,0.2);color:#f0d5ff}
+.spotlight-pill-secret{background:rgba(255,208,92,0.22);color:#fff2c2}
 .opening-stack-hitbox{position:relative;width:min(80vw, 270px);aspect-ratio:195/270;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
 .opening-back{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.28)}
 .opening-current-card{position:absolute;inset:0;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));box-shadow:0 16px 30px rgba(0,0,0,0.33);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab;isolation:isolate}
 .opening-current-card:active{cursor:grabbing}
+.opening-flip-shell{position:absolute;inset:0;perspective:1200px}
+.opening-flip-card{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+.opening-card-face{position:absolute;inset:0;border-radius:12px;overflow:hidden;backface-visibility:hidden;display:flex;align-items:center;justify-content:center}
+.opening-card-face-back{background:linear-gradient(180deg, rgba(11,18,32,0.9), rgba(11,18,32,0.7))}
+.opening-card-face-front{transform:rotateY(180deg);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12))}
+.opening-back-art{width:100%;height:100%;object-fit:cover;display:block;border-radius:12px}
 .card-burst{position:absolute;inset:-16%;pointer-events:none;filter:blur(24px);opacity:.55;mix-blend-mode:screen}
 .card-burst-base{display:none}
 .card-burst-holo{background:radial-gradient(circle, rgba(101,214,255,0.55), transparent 60%)}
@@ -199,6 +215,8 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .zoom-no-image{color:var(--muted)}
 
 @keyframes floatParticle{0%{transform:translate3d(0,0,0) scale(.8);opacity:0}15%{opacity:.9}85%{opacity:.8}100%{transform:translate3d(0,-180px,0) scale(1.15);opacity:0}}
+@keyframes chargePulse{0%{opacity:0;transform:scale(0.98)}55%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.01)}}
+@keyframes spotlightPulse{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
 
 @media(max-width:800px){
   .site-main{padding:16px}
@@ -219,6 +237,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
   .hero{text-align:left}
   .hero p{margin-left:0;margin-right:0}
   .flow-header{align-items:flex-start;flex-direction:column}
+  .flow-actions{width:100%;justify-content:center}
   .stage-spotlight-center{width:320px;height:220px;top:110px}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;max-width:none}

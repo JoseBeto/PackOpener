@@ -5,6 +5,7 @@ import packs from '../data/packs.json'
 import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import CardZoomModal from './CardZoomModal'
+import { getSfxEngine } from '../lib/sfx'
 
 type FocusCard = {
   name: string
@@ -60,10 +61,18 @@ export default function PackOpener() {
   const [focusCard, setFocusCard] = useState<FocusCard | null>(null)
   const [swipeDirection, setSwipeDirection] = useState<1 | -1>(1)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isSleeveCharging, setIsSleeveCharging] = useState(false)
   const [isSleeveOpening, setIsSleeveOpening] = useState(false)
+  const [isCardFaceUp, setIsCardFaceUp] = useState(false)
+  const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
-  const sleeveTimeoutRef = useRef<number | null>(null)
+  const sleeveChargeTimeoutRef = useRef<number | null>(null)
+  const sleeveOpenTimeoutRef = useRef<number | null>(null)
+  const flipTimeoutRef = useRef<number | null>(null)
+  const spotlightTimeoutRef = useRef<number | null>(null)
+  const sfxRef = useRef(getSfxEngine())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
   const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
@@ -153,6 +162,7 @@ export default function PackOpener() {
   useEffect(() => {
     if (view !== 'summary') return
     summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    sfxRef.current.summary()
   }, [view])
 
   useEffect(() => {
@@ -171,11 +181,58 @@ export default function PackOpener() {
 
   useEffect(() => {
     return () => {
-      if (sleeveTimeoutRef.current) {
-        window.clearTimeout(sleeveTimeoutRef.current)
-      }
+      if (sleeveChargeTimeoutRef.current) window.clearTimeout(sleeveChargeTimeoutRef.current)
+      if (sleeveOpenTimeoutRef.current) window.clearTimeout(sleeveOpenTimeoutRef.current)
+      if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
+      if (spotlightTimeoutRef.current) window.clearTimeout(spotlightTimeoutRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const saved = window.localStorage.getItem('packopener-sound-muted')
+    const muted = saved === '1'
+    setIsMuted(muted)
+    sfxRef.current.setMuted(muted)
+  }, [])
+
+  useEffect(() => {
+    sfxRef.current.setMuted(isMuted)
+  }, [isMuted])
+
+  useEffect(() => {
+    if (!hasActiveOpening || !visibleCard) return
+    if (flipTimeoutRef.current) {
+      window.clearTimeout(flipTimeoutRef.current)
+      flipTimeoutRef.current = null
+    }
+    if (spotlightTimeoutRef.current) {
+      window.clearTimeout(spotlightTimeoutRef.current)
+      spotlightTimeoutRef.current = null
+    }
+
+    setIsCardFaceUp(false)
+    setIsSpotlightMoment(false)
+    flipTimeoutRef.current = window.setTimeout(() => {
+      setIsCardFaceUp(true)
+      sfxRef.current.flip()
+      const highlight = getHighlight(visibleCard)
+      if (highlight.label) sfxRef.current.rarity(highlight.tone)
+
+      if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
+        setIsSpotlightMoment(true)
+        if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(highlight.tone === 'secret' ? [22, 46, 22] : [18])
+        }
+        spotlightTimeoutRef.current = window.setTimeout(() => {
+          setIsSpotlightMoment(false)
+          spotlightTimeoutRef.current = null
+        }, 480)
+      }
+
+      flipTimeoutRef.current = null
+    }, 210)
+  }, [hasActiveOpening, visibleCard, isMuted])
 
   useEffect(() => {
     dragX.set(0)
@@ -209,14 +266,29 @@ export default function PackOpener() {
   }
 
   function resetFlow(nextView: OpeningView = 'select') {
-    if (sleeveTimeoutRef.current) {
-      window.clearTimeout(sleeveTimeoutRef.current)
-      sleeveTimeoutRef.current = null
+    if (sleeveChargeTimeoutRef.current) {
+      window.clearTimeout(sleeveChargeTimeoutRef.current)
+      sleeveChargeTimeoutRef.current = null
+    }
+    if (sleeveOpenTimeoutRef.current) {
+      window.clearTimeout(sleeveOpenTimeoutRef.current)
+      sleeveOpenTimeoutRef.current = null
+    }
+    if (flipTimeoutRef.current) {
+      window.clearTimeout(flipTimeoutRef.current)
+      flipTimeoutRef.current = null
+    }
+    if (spotlightTimeoutRef.current) {
+      window.clearTimeout(spotlightTimeoutRef.current)
+      spotlightTimeoutRef.current = null
     }
     setCurrentPack([])
     setRevealIndex(0)
     setView(nextView)
+    setIsSleeveCharging(false)
     setIsSleeveOpening(false)
+    setIsCardFaceUp(false)
+    setIsSpotlightMoment(false)
     setIsTransitioning(false)
     setSwipeDirection(1)
   }
@@ -241,6 +313,9 @@ export default function PackOpener() {
     const pack = buildPack()
     if (!pack) return
 
+    sfxRef.current.unlock()
+    sfxRef.current.tap()
+
     setCurrentPack(pack)
     setRevealIndex(0)
     setView('sleeve')
@@ -250,25 +325,49 @@ export default function PackOpener() {
   }
 
   function revealNext(direction: 1 | -1 = 1) {
-    if (view !== 'opening' || currentPack.length === 0 || isTransitioning) return
+    if (view !== 'opening' || currentPack.length === 0 || isTransitioning || isSpotlightMoment) return
     if (revealIndex >= currentPack.length - 1) {
       setView('summary')
       return
     }
+    sfxRef.current.whoosh()
     setSwipeDirection(direction)
     setIsTransitioning(true)
     setRevealIndex((prev) => prev + 1)
   }
 
   function startSleeveOpen() {
-    if (currentPack.length === 0 || isSleeveOpening) return
+    if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging) return
 
-    setIsSleeveOpening(true)
-    sleeveTimeoutRef.current = window.setTimeout(() => {
-      setView('opening')
-      setIsSleeveOpening(false)
-      sleeveTimeoutRef.current = null
-    }, 820)
+    sfxRef.current.unlock()
+    sfxRef.current.tap()
+    setIsSleeveCharging(true)
+    sfxRef.current.rustle()
+
+    sleeveChargeTimeoutRef.current = window.setTimeout(() => {
+      setIsSleeveCharging(false)
+      setIsSleeveOpening(true)
+      sfxRef.current.tear()
+      sleeveChargeTimeoutRef.current = null
+
+      sleeveOpenTimeoutRef.current = window.setTimeout(() => {
+        setView('opening')
+        setIsSleeveOpening(false)
+        sleeveOpenTimeoutRef.current = null
+      }, 820)
+    }, 320)
+  }
+
+  function toggleMuted() {
+    const next = !isMuted
+    setIsMuted(next)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('packopener-sound-muted', next ? '1' : '0')
+    }
+    if (!next) {
+      sfxRef.current.unlock()
+      sfxRef.current.tap()
+    }
   }
 
   function onCardDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
@@ -315,10 +414,11 @@ export default function PackOpener() {
           </div>
           <div className="landing-copy">
             <span className="landing-eyebrow">Choose your next pack</span>
-            <h2 className="landing-title">Pick a set, load the sleeve, and crack it open.</h2>
-            <p className="landing-text">
-              Start on a clean selection screen, then move into a dedicated opening view with a sleeve animation, card-by-card reveals, and a final summary.
-            </p>
+            <h2 className="landing-title">Pick a set. Crack a pack.</h2>
+            <p className="landing-text">Load the sleeve, swipe through six pulls, and review your best hit.</p>
+            <button className="ghost-button sound-toggle" onClick={toggleMuted}>
+              {isMuted ? 'Sound: Off' : 'Sound: On'}
+            </button>
           </div>
 
           <div className="landing-grid">
@@ -369,7 +469,7 @@ export default function PackOpener() {
       )}
 
       {view === 'sleeve' && currentPack.length > 0 && (
-        <section className="flow-shell sleeve-view-shell premium-stage premium-stage-sleeve">
+        <section className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
@@ -377,9 +477,14 @@ export default function PackOpener() {
             <span />
           </div>
           <div className="flow-header">
-            <button className="ghost-button" onClick={() => resetFlow('select')}>
-              Choose Another Set
-            </button>
+            <div className="flow-actions">
+              <button className="ghost-button" onClick={() => resetFlow('select')}>
+                Choose Another Set
+              </button>
+              <button className="ghost-button sound-toggle" onClick={toggleMuted}>
+                {isMuted ? 'Sound: Off' : 'Sound: On'}
+              </button>
+            </div>
             <div className="flow-meta">{packTypeLabel} • {setDisplayName}</div>
           </div>
 
@@ -392,16 +497,22 @@ export default function PackOpener() {
 
             <motion.button
               type="button"
-              className={`sleeve-stage ${isSleeveOpening ? 'is-opening' : ''}`}
+              className={`sleeve-stage ${isSleeveCharging ? 'is-charging' : ''} ${isSleeveOpening ? 'is-opening' : ''}`}
               onClick={startSleeveOpen}
-              disabled={isSleeveOpening}
+              disabled={isSleeveOpening || isSleeveCharging}
               whileHover={{ scale: isSleeveOpening ? 1 : 1.01 }}
               whileTap={{ scale: isSleeveOpening ? 1 : 0.99 }}
-              animate={isSleeveOpening ? { rotateZ: [0, -1.2, 1.2, -0.8, 0] } : { rotateZ: 0 }}
-              transition={{ duration: 0.52, ease: 'easeInOut' }}
+              animate={
+                isSleeveOpening
+                  ? { rotateZ: [0, -1.2, 1.2, -0.8, 0], scale: [1, 1.01, 1] }
+                  : isSleeveCharging
+                  ? { rotateZ: [0, -0.5, 0.5, -0.2, 0], scale: [1, 1.03, 1.015] }
+                  : { rotateZ: 0, scale: 1 }
+              }
+              transition={{ duration: isSleeveCharging ? 0.32 : 0.52, ease: 'easeInOut' }}
               aria-label="Open pack sleeve"
               onPointerMove={(e) => {
-                if (isSleeveOpening) return
+                if (isSleeveOpening || isSleeveCharging) return
                 const rect = e.currentTarget.getBoundingClientRect()
                 sleeveMxRaw.set(((e.clientX - rect.left) / rect.width - 0.5))
                 sleeveMxRawY.set(((e.clientY - rect.top) / rect.height - 0.5))
@@ -412,15 +523,20 @@ export default function PackOpener() {
               }}
             >
               <motion.div
+                className="sleeve-charge-aura"
+                animate={isSleeveCharging ? { opacity: [0.15, 0.6, 0.2], scale: [0.92, 1.05, 1] } : { opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.32, ease: 'easeOut' }}
+              />
+              <motion.div
                 className="sleeve-shell"
-                animate={isSleeveOpening ? { y: 18 } : { y: 0 }}
+                animate={isSleeveOpening ? { y: 18 } : isSleeveCharging ? { y: -4 } : { y: 0 }}
                 transition={{ duration: 0.48 }}
                 style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
               >
                 <div className="sleeve-pocket" aria-hidden="true">
                   <motion.div
                     className="sleeve-deck"
-                    animate={isSleeveOpening ? { y: -150, opacity: 1, scale: 1 } : { y: 56, opacity: 0.98, scale: 0.98 }}
+                    animate={isSleeveOpening ? { y: -150, opacity: 1, scale: 1 } : isSleeveCharging ? { y: 46, opacity: 1, scale: 1.015 } : { y: 56, opacity: 0.98, scale: 0.98 }}
                     transition={{ duration: 0.62, delay: isSleeveOpening ? 0.16 : 0, ease: 'easeOut' }}
                   >
                     <img src="/card-back.png" alt="deck" className="deck-back" />
@@ -440,7 +556,7 @@ export default function PackOpener() {
                     : <div className="sleeve-brand">{setDisplayName}</div>
                   }
                   <div className="sleeve-packtype">{packTypeLabel}</div>
-                  <div className="sleeve-hint">Tap to open</div>
+                  <div className="sleeve-hint">{isSleeveCharging ? 'Charging...' : 'Tap to open'}</div>
                 </div>
               </motion.div>
             </motion.button>
@@ -449,7 +565,7 @@ export default function PackOpener() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone}`}>
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
@@ -457,15 +573,31 @@ export default function PackOpener() {
             <span />
           </div>
           <div className="flow-header">
-            <button className="ghost-button" onClick={() => resetFlow('select')}>
-              Choose Another Set
-            </button>
+            <div className="flow-actions">
+              <button className="ghost-button" onClick={() => resetFlow('select')}>
+                Choose Another Set
+              </button>
+              <button className="ghost-button sound-toggle" onClick={toggleMuted}>
+                {isMuted ? 'Sound: Off' : 'Sound: On'}
+              </button>
+            </div>
             <div className="flow-meta">Card {revealIndex + 1} of {currentPack.length} • {remainingCards} left</div>
           </div>
 
           <div className="opening-stage">
             <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>
-            {currentHighlight.label && (
+            {isSpotlightMoment && currentHighlight.label && (
+              <motion.div
+                className={`spotlight-pill spotlight-pill-${currentHighlight.tone}`}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+              >
+                {currentHighlight.tone === 'secret' ? 'Secret Spotlight' : 'Ultra Spotlight'}
+              </motion.div>
+            )}
+            {currentHighlight.label && isCardFaceUp && (
               <motion.div
                 className={`reveal-banner reveal-banner-${currentHighlight.tone}`}
                 initial={{ opacity: 0, y: 12, scale: 0.96 }}
@@ -531,36 +663,49 @@ export default function PackOpener() {
                   className="opening-current-card"
                 >
                   <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
-                  {(visibleCard.images?.large || visibleCard.images?.small) ? (
-                    <>
-                      {!loadedImages[visibleCard.id] && <div className="card-status">Loading...</div>}
-                      <img
-                        src={visibleCard.images.large || visibleCard.images.small}
-                        alt={visibleCard.name}
-                        className="card-art"
-                        draggable={false}
-                        onLoad={() => setLoadedImages((prev) => ({ ...prev, [visibleCard.id]: true }))}
-                        style={{ opacity: loadedImages[visibleCard.id] ? 1 : 0, transition: 'opacity 0.3s ease' }}
-                        loading="eager"
-                      />
-                    </>
-                  ) : (
-                    <div className="card-status">No Image</div>
-                  )}
+                  <div className="opening-flip-shell">
+                    <motion.div
+                      className="opening-flip-card"
+                      animate={{ rotateY: isCardFaceUp ? 180 : 0 }}
+                      transition={{ duration: 0.38, ease: [0.18, 0.84, 0.32, 1] }}
+                    >
+                      <div className="opening-card-face opening-card-face-back">
+                        <img src="/card-back.png" alt="card back" className="opening-back-art" draggable={false} />
+                      </div>
+                      <div className="opening-card-face opening-card-face-front">
+                        {(visibleCard.images?.large || visibleCard.images?.small) ? (
+                          <>
+                            {!loadedImages[visibleCard.id] && <div className="card-status">Loading...</div>}
+                            <img
+                              src={visibleCard.images.large || visibleCard.images.small}
+                              alt={visibleCard.name}
+                              className="card-art"
+                              draggable={false}
+                              onLoad={() => setLoadedImages((prev) => ({ ...prev, [visibleCard.id]: true }))}
+                              style={{ opacity: loadedImages[visibleCard.id] ? 1 : 0, transition: 'opacity 0.3s ease' }}
+                              loading="eager"
+                            />
+                          </>
+                        ) : (
+                          <div className="card-status">No Image</div>
+                        )}
 
-                  {(visibleCard.isHolo || (visibleCard as any).variants?.holo) && (
-                    <>
-                      <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                      <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                    </>
-                  )}
-                  {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
-                    <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                  )}
-                  {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
-                    <div className="card-badge card-badge-right">Reverse</div>
-                  )}
-                  {visibleCard.special && <div className="card-badge card-badge-special">{visibleCard.special}</div>}
+                        {(visibleCard.isHolo || (visibleCard as any).variants?.holo) && (
+                          <>
+                            <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                            <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                          </>
+                        )}
+                        {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                          <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                        )}
+                        {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                          <div className="card-badge card-badge-right">Reverse</div>
+                        )}
+                        {visibleCard.special && <div className="card-badge card-badge-special">{visibleCard.special}</div>}
+                      </div>
+                    </motion.div>
+                  </div>
                 </motion.div>
               </AnimatePresence>
             </div>
