@@ -111,23 +111,21 @@ class PocketSfx {
   }
 
   tearOpen() {
-    // Initial crack/snap
-    this.playNoise({ duration: 0.08, volume: 0.085, highpass: 3200 })
-    this.playTone({ frequency: 350, frequencyEnd: 240, duration: 0.1, type: 'sawtooth', volume: 0.04 })
-    // Main ripping sound
-    this.playNoise({ duration: 0.34, volume: 0.08, highpass: 1550, delay: 0.02 })
-    this.playNoise({ duration: 0.22, volume: 0.065, highpass: 2400, delay: 0.12 })
-    // Tonal component (crackle)
-    this.playTone({ frequency: 420, frequencyEnd: 180, duration: 0.3, type: 'sawtooth', volume: 0.045, delay: 0.04 })
-    this.playTone({ frequency: 580, frequencyEnd: 320, duration: 0.2, type: 'triangle', volume: 0.032, delay: 0.1 })
+    // Initial sharp snap at tear point
+    this.playNoise({ duration: 0.06, volume: 0.04, highpass: 3800 })
+    this.playTone({ frequency: 680, frequencyEnd: 520, duration: 0.08, type: 'triangle', volume: 0.022 })
+    // Main ripping crinkle - thin, high-pitched
+    this.playNoise({ duration: 0.28, volume: 0.045, highpass: 2200 })
+    this.playNoise({ duration: 0.18, volume: 0.032, highpass: 3600, delay: 0.08 })
+    // Tonal crackle (lightweight, fabric-like)
+    this.playTone({ frequency: 640, frequencyEnd: 380, duration: 0.26, type: 'sawtooth', volume: 0.025, delay: 0.02 })
+    this.playTone({ frequency: 920, frequencyEnd: 540, duration: 0.16, type: 'triangle', volume: 0.018, delay: 0.1 })
   }
 
   packPop() {
-    // High pitch punch
-    this.playTone({ frequency: 360, frequencyEnd: 220, duration: 0.14, type: 'square', volume: 0.038 })
-    // Retro 8-bit style pop
-    this.playTone({ frequency: 220, frequencyEnd: 100, duration: 0.11, type: 'triangle', volume: 0.028, delay: 0.04 })
-    this.playNoise({ duration: 0.12, volume: 0.032, highpass: 2000, delay: 0.01 })
+    // Gentle pop / emergence
+    this.playTone({ frequency: 280, frequencyEnd: 140, duration: 0.12, type: 'triangle', volume: 0.022 })
+    this.playNoise({ duration: 0.1, volume: 0.018, highpass: 1600, delay: 0.01 })
   }
 
   whoosh() {
