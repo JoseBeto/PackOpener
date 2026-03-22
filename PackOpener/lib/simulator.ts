@@ -148,13 +148,23 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     )
   }
   const isTeamRocketPokemon = (card: Card) => /team rocket/i.test(card.name || '')
+  const ascendedAssignedPatterns = ['ReversePokeBall', 'ReverseLoveBall', 'ReverseFriendBall', 'ReverseQuickBall', 'ReverseDuskBall'] as const
+  const ascendedPatternMap = new Map<string, (typeof ascendedAssignedPatterns)[number]>()
+  if (isAscendedHeroesSet) {
+    const eligible = pool
+      .filter((card) => {
+        const category = (card.category || '').toLowerCase()
+        return category === 'pokemon' && !isAscendedHeroesBigHit(card) && !isTeamRocketPokemon(card)
+      })
+      .slice()
+      .sort((a, b) => (a.id || '').localeCompare(b.id || ''))
+    eligible.forEach((card, idx) => {
+      ascendedPatternMap.set(card.id, ascendedAssignedPatterns[idx % ascendedAssignedPatterns.length])
+    })
+  }
   const getAssignedAscendedHeroesPattern = (card: Card) => {
     if (isTeamRocketPokemon(card)) return 'ReverseRocketR'
-    const patterns = ['ReversePokeBall', 'ReverseLoveBall', 'ReverseFriendBall', 'ReverseQuickBall', 'ReverseDuskBall']
-    const key = `${card.id}:${card.name}`
-    let hash = 0
-    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
-    return patterns[hash % patterns.length]
+    return ascendedPatternMap.get(card.id) || 'ReversePokeBall'
   }
 
   function applyMainlineReverseFinish(card: Card) {
