@@ -9,17 +9,57 @@ export function getSetFamily(setId: string): SetFamily {
 export const MAINLINE_LADDER_DISPLAY = 'Holo → Double → Ultra → IR → SIR → Gold'
 export const POCKET_LADDER_DISPLAY = '1◊/2◊ → 3◊ → 4◊ → 1★ → 2★/Shiny → 3★ → Crown'
 
-/** Poké Ball reverse holos — all Sword & Shield and Scarlet & Violet era mainline sets */
-export function supportsBallReverseSet(setId: string) {
-  const id = setId.trim().toLowerCase()
-  return /^sv\d/.test(id) || /^swsh\d/.test(id) || id === 'sv03.5' || id.includes('151')
+export type BallTypes = {
+  pokeball: boolean
+  masterball: boolean
+  loveball: boolean
+  friendball: boolean
+  quickball: boolean
+  duskball: boolean
+  rocketr: boolean
+  energytype: boolean
 }
 
-/** Master Ball reverses — Scarlet & Violet era only (sv* sets) */
-export function supportsMasterBallSet(setId: string) {
+/**
+ * Returns which special reverse variants are available for a given set.
+ * - SWSH: Poké Ball
+ * - SV: Poké Ball + Master Ball
+ * - Ascended Heroes (me02.5): Energy reverse + assigned pattern reverse
+ *   (Poké Ball, Love Ball, Friend Ball, Quick Ball, Dusk Ball, Rocket R)
+ */
+export function getBallTypes(setId: string): BallTypes {
   const id = setId.trim().toLowerCase()
-  return /^sv\d/.test(id) || id === 'sv03.5' || id.includes('151')
+  const isSV = /^sv\d/.test(id) || id === 'sv03.5' || id.includes('151')
+  const isSWSH = /^swsh\d/.test(id)
+  const isAscendedHeroes = id === 'me02.5'
+  if (isAscendedHeroes) {
+    return {
+      pokeball: true,
+      masterball: false,
+      loveball: true,
+      friendball: true,
+      quickball: true,
+      duskball: true,
+      rocketr: true,
+      energytype: true,
+    }
+  }
+  return {
+    pokeball: isSV || isSWSH,
+    masterball: isSV,
+    loveball: false,
+    friendball: false,
+    quickball: false,
+    duskball: false,
+    rocketr: false,
+    energytype: false,
+  }
 }
+
+/** @deprecated use getBallTypes */
+export const supportsBallReverseSet = (setId: string) => getBallTypes(setId).pokeball
+/** @deprecated use getBallTypes */
+export const supportsMasterBallSet  = (setId: string) => getBallTypes(setId).masterball
 
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {
   const rarity = (card.rarity || '').toLowerCase()
@@ -39,9 +79,17 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
   if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
   if (special.includes('illustration') || rarity.includes('illustration')) return 82
   if (rarity.includes('ultra')) return 68
-  if (special.includes('reversemasterball')) return 62
+  if (special.includes('reversemasterball')) return 52
   if (special.includes('doublerare') || rarity.includes('double rare')) return 58
-  if (special.includes('reversepokeball')) return 49
+  if (
+    special.includes('reversepokeball') ||
+    special.includes('reverseloveball') ||
+    special.includes('reversefriendball') ||
+    special.includes('reversequickball') ||
+    special.includes('reverseduskball') ||
+    special.includes('reverserocketr')
+  ) return 49
+  if (special.includes('reverseenergytype')) return 47
   if (card.isReverse) return 46
   if (card.isHolo || rarity.includes('holo')) return 40
   if (rarity.includes('rare')) return 30

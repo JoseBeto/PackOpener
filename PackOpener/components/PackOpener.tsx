@@ -6,7 +6,7 @@ import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import CardZoomModal from './CardZoomModal'
 import { getSfxEngine } from '../lib/sfx'
-import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY, supportsBallReverseSet, supportsMasterBallSet } from '../lib/rarityLadder'
+import { getCardRankBySet, getSetFamily, getBallTypes, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY } from '../lib/rarityLadder'
 
 type FocusCard = {
   name: string
@@ -20,6 +20,12 @@ function specialBadge(special?: string): { text: string; cls: string } | null {
   if (!special) return null
   if (special === 'ReverseMasterBall') return { text: 'Master Ball', cls: 'card-badge-masterball' }
   if (special === 'ReversePokeBall') return { text: 'Poké Ball', cls: 'card-badge-pokeball' }
+  if (special === 'ReverseLoveBall') return { text: 'Love Ball', cls: 'card-badge-loveball' }
+  if (special === 'ReverseFriendBall') return { text: 'Friend Ball', cls: 'card-badge-friendball' }
+  if (special === 'ReverseQuickBall') return { text: 'Quick Ball', cls: 'card-badge-quickball' }
+  if (special === 'ReverseDuskBall') return { text: 'Dusk Ball', cls: 'card-badge-duskball' }
+  if (special === 'ReverseRocketR') return { text: 'Rocket R', cls: 'card-badge-rocketr' }
+  if (special === 'ReverseEnergyType') return { text: 'Energy Reverse', cls: 'card-badge-energytype' }
   return { text: special, cls: 'card-badge-special' }
 }
 
@@ -27,7 +33,26 @@ function specialLabel(special?: string): string {
   if (!special) return ''
   if (special === 'ReverseMasterBall') return 'Master Ball'
   if (special === 'ReversePokeBall') return 'Poké Ball'
+  if (special === 'ReverseLoveBall') return 'Love Ball'
+  if (special === 'ReverseFriendBall') return 'Friend Ball'
+  if (special === 'ReverseQuickBall') return 'Quick Ball'
+  if (special === 'ReverseDuskBall') return 'Dusk Ball'
+  if (special === 'ReverseRocketR') return 'Rocket R'
+  if (special === 'ReverseEnergyType') return 'Energy Reverse'
   return special
+}
+
+function specialOverlayClass(special?: string): string | null {
+  if (!special) return null
+  if (special === 'ReversePokeBall') return 'pokeball-foil-overlay'
+  if (special === 'ReverseMasterBall') return 'masterball-foil-overlay'
+  if (special === 'ReverseLoveBall') return 'loveball-foil-overlay'
+  if (special === 'ReverseFriendBall') return 'friendball-foil-overlay'
+  if (special === 'ReverseQuickBall') return 'quickball-foil-overlay'
+  if (special === 'ReverseDuskBall') return 'duskball-foil-overlay'
+  if (special === 'ReverseRocketR') return 'rocketr-foil-overlay'
+  if (special === 'ReverseEnergyType') return 'energytype-foil-overlay'
+  return null
 }
 
 type HighlightTone = 'base' | 'holo' | 'ultra' | 'secret'
@@ -93,8 +118,12 @@ export default function PackOpener() {
   const setDisplayName = setNames[setId] || setId.toUpperCase()
   const setLogo = setLogos[setId] || null
   const isPocketSet = getSetFamily(setId) === 'pocket'
-  const hasBallReverse = !isPocketSet && supportsBallReverseSet(setId)
-  const hasMasterBall = !isPocketSet && supportsMasterBallSet(setId)
+  const ballTypes = isPocketSet
+    ? { pokeball: false, masterball: false, loveball: false, friendball: false, quickball: false, duskball: false, rocketr: false, energytype: false }
+    : getBallTypes(setId)
+  const hasBallReverse = ballTypes.pokeball
+  const hasMasterBall = ballTypes.masterball
+  const isAscendedHeroesSet = setId.trim().toLowerCase() === 'me02.5'
   const currentHighlight = getHighlight(visibleCard, setId)
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
@@ -543,13 +572,15 @@ export default function PackOpener() {
               <div className="pack-stat-list">
                 <div className="pack-stat"><span>Base cards</span><strong>{isPocketSet ? '1◊ + 2◊' : '1 Common + 2 Uncommon'}</strong></div>
                 <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
-                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : hasBallReverse ? (hasMasterBall ? '~72% std • ~25% Poké Ball • ~3% Master Ball' : '~75% std • ~25% Poké Ball') : 'Standard reverse'}</strong></div>
+                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : isAscendedHeroesSet ? 'Energy / Ball / Rocket patterns' : hasBallReverse ? (hasMasterBall ? '~72% std • ~25% Poké Ball • ~3% Master Ball' : '~75% std • ~25% Poké Ball') : 'Standard reverse'}</strong></div>
                 <div className="pack-stat"><span>Total cards</span><strong>6 per pack</strong></div>
               </div>
 
               <div className="selected-pack-legend">
                 {isPocketSet
                   ? 'Pocket tiers: 1◊/2◊ base, 3◊/4◊ core hits, 1★/2★/3★ chase, Crown top tier.'
+                  : isAscendedHeroesSet
+                  ? 'Ascended Heroes: non-ex Pokémon split between Energy reverse and an assigned pattern reverse. Simulated patterns include Poké Ball, Love Ball, Friend Ball, Quick Ball, Dusk Ball, and Rocket R.'
                   : hasBallReverse
                   ? `Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers. Reverse slot: ~72% standard, ~25% Poké Ball${hasMasterBall ? ', ~3% Master Ball' : ''}.`
                   : 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers.'
@@ -826,11 +857,8 @@ export default function PackOpener() {
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                         )}
-                        {visibleCard.special === 'ReversePokeBall' && (
-                          <div className="pokeball-foil-overlay" />
-                        )}
-                        {visibleCard.special === 'ReverseMasterBall' && (
-                          <div className="masterball-foil-overlay" />
+                        {specialOverlayClass(visibleCard.special) && (
+                          <div className={specialOverlayClass(visibleCard.special)!} />
                         )}
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="card-badge card-badge-right">Reverse</div>
@@ -956,8 +984,7 @@ export default function PackOpener() {
                     {(c.isReverse || (c as any).variants?.reverse) && (
                       <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                     )}
-                    {c.special === 'ReversePokeBall' && <div className="pokeball-foil-overlay" />}
-                    {c.special === 'ReverseMasterBall' && <div className="masterball-foil-overlay" />}
+                    {specialOverlayClass(c.special) && <div className={specialOverlayClass(c.special)!} />}
                     {(c.isReverse || (c as any).variants?.reverse) && <div className="card-badge card-badge-right">Reverse</div>}
                     {specialBadge(c.special) && (
                       <div className={`card-badge ${specialBadge(c.special)!.cls}`}>

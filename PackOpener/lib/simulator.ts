@@ -1,4 +1,4 @@
-import { getSetFamily, supportsBallReverseSet, supportsMasterBallSet } from './rarityLadder'
+import { getSetFamily, getBallTypes } from './rarityLadder'
 
 type Card = {
   id: string
@@ -135,20 +135,63 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     return fallback ? fallback() : pickByRarity()
   }
 
+  const isAscendedHeroesSet = setId.trim().toLowerCase() === 'me02.5'
+  const isAscendedHeroesBigHit = (card: Card) => {
+    const text = (card.rarity || '').toLowerCase()
+    return (
+      text.includes('double rare') ||
+      text.includes('ultra rare') ||
+      text.includes('mega attack') ||
+      text.includes('illustration') ||
+      text.includes('special illustration') ||
+      text.includes('mega hyper')
+    )
+  }
+  const isTeamRocketPokemon = (card: Card) => /team rocket/i.test(card.name || '')
+  const getAssignedAscendedHeroesPattern = (card: Card) => {
+    if (isTeamRocketPokemon(card)) return 'ReverseRocketR'
+    const patterns = ['ReversePokeBall', 'ReverseLoveBall', 'ReverseFriendBall', 'ReverseQuickBall', 'ReverseDuskBall']
+    const key = `${card.id}:${card.name}`
+    let hash = 0
+    for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
+    return patterns[hash % patterns.length]
+  }
+
   function applyMainlineReverseFinish(card: Card) {
-    if (isPocketSet || !card.isReverse || !supportsBallReverseSet(setId)) return
-    const hasMasterBall = supportsMasterBallSet(setId)
-    const roll = Math.random()
-    // Real-life approximate distribution per reverse holo slot:
-    //   ~3%  Master Ball (SV era only)
-    //   ~25% Poké Ball
-    //   ~72% standard reverse holo (no special)
-    if (hasMasterBall && roll < 0.03) {
-      card.special = 'ReverseMasterBall'
-    } else if (roll < 0.28) {
-      card.special = 'ReversePokeBall'
+    if (isPocketSet || !card.isReverse) return
+    const balls = getBallTypes(setId)
+    if (!balls.pokeball) return
+
+    if (isAscendedHeroesSet) {
+      const category = (card.category || '').toLowerCase()
+      if (category === 'trainer' || category === 'energy' || isAscendedHeroesBigHit(card)) return
+      if (category !== 'pokemon') return
+
+      // Best available evidence: non-ex Pokémon have two reverse styles in Ascended Heroes:
+      // an Energy reverse holo, or an assigned pattern reverse holo.
+      // Exact per-card pattern metadata is not in our source data, so the assigned pattern is
+      // deterministically simulated from the card id to keep the same card visually consistent.
+      if (Math.random() < 0.5) {
+        card.special = 'ReverseEnergyType'
+      } else {
+        card.special = getAssignedAscendedHeroesPattern(card)
+      }
+      return
     }
-    // else: standard reverse holo — card.special stays undefined
+
+    const roll = Math.random()
+    // Cumulative thresholds — rarest first
+    // Master Ball ~3%  (SV era only)
+    // Poké Ball  ~25% (all eligible sets)
+    // Standard reverse: remainder
+    let threshold = 0
+    if (balls.masterball) {
+      threshold += 0.03
+      if (roll < threshold) { card.special = 'ReverseMasterBall'; return }
+    }
+    threshold += 0.25
+    if (roll < threshold) { card.special = 'ReversePokeBall' }
+    // else standard reverse holo — card.special stays undefined
   }
 
   const rarityText = (card: Card) => (card.rarity || '').toLowerCase()
