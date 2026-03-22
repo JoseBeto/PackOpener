@@ -50,6 +50,7 @@ export default function PackOpener() {
   const [loading, setLoading] = useState(false)
   const [pool, setPool] = useState<Card[]>([])
   const [setNames, setSetNames] = useState<Record<string, string>>({})
+  const [setLogos, setSetLogos] = useState<Record<string, string>>({})
   const [currentPack, setCurrentPack] = useState<Card[]>([])
   const [revealIndex, setRevealIndex] = useState(0)
   const [view, setView] = useState<OpeningView>('select')
@@ -80,6 +81,7 @@ export default function PackOpener() {
   const remainingCards = hasActiveOpening ? currentPack.length - revealIndex - 1 : 0
   const packTypeLabel = packType === 'premium' ? 'Premium Pack' : 'Standard Pack'
   const setDisplayName = setNames[setId] || setId.toUpperCase()
+  const setLogo = setLogos[setId] || null
   const currentHighlight = getHighlight(visibleCard)
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
@@ -130,7 +132,13 @@ export default function PackOpener() {
           return acc
         }, {})
 
+        const logos = data.sets.reduce((acc: Record<string, string>, item: { id: string; logo?: string }) => {
+          if (item.logo) acc[item.id] = item.logo
+          return acc
+        }, {})
+
         setSetNames(mapped)
+        setSetLogos(logos)
       } catch {
         if (mounted) setSetNames({})
       }
@@ -349,7 +357,10 @@ export default function PackOpener() {
               <div className="selected-pack-art" aria-hidden="true">
                 <div className="selected-pack-glow" />
                 <div className="selected-pack-sleeve">
-                  <span>{setDisplayName}</span>
+                  {setLogo
+                    ? <img src={setLogo} alt={setDisplayName} className="selected-pack-logo" draggable={false} />
+                    : <span>{setDisplayName}</span>
+                  }
                 </div>
               </div>
             </div>
@@ -424,7 +435,10 @@ export default function PackOpener() {
                   transition={{ duration: 0.22, delay: isSleeveOpening ? 0.14 : 0 }}
                 />
                 <div className="sleeve-body">
-                  <div className="sleeve-brand">{setDisplayName}</div>
+                  {setLogo
+                    ? <img src={setLogo} alt={setDisplayName} className="sleeve-logo" draggable={false} />
+                    : <div className="sleeve-brand">{setDisplayName}</div>
+                  }
                   <div className="sleeve-packtype">{packTypeLabel}</div>
                   <div className="sleeve-hint">Tap to open</div>
                 </div>
@@ -517,11 +531,11 @@ export default function PackOpener() {
                   className="opening-current-card"
                 >
                   <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
-                  {visibleCard.images?.small ? (
+                  {(visibleCard.images?.large || visibleCard.images?.small) ? (
                     <>
                       {!loadedImages[visibleCard.id] && <div className="card-status">Loading...</div>}
                       <img
-                        src={visibleCard.images.small}
+                        src={visibleCard.images.large || visibleCard.images.small}
                         alt={visibleCard.name}
                         className="card-art"
                         draggable={false}
@@ -567,7 +581,7 @@ export default function PackOpener() {
       {view === 'summary' && currentPack.length > 0 && (
         <section className="flow-shell summary-view-shell premium-stage premium-stage-summary" ref={summaryRef}>
           <div className="stage-spotlight stage-spotlight-center" />
-          <div className="flow-header">
+          <div className="flow-header" style={{ justifyContent: 'center', textAlign: 'center' }}>
             <div className="flow-meta">Pack complete • {currentPack.length} cards pulled</div>
           </div>
 
@@ -584,16 +598,6 @@ export default function PackOpener() {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.35 }}
               >
-                <div className="best-pull-copy">
-                  <span className="landing-eyebrow">Best pull</span>
-                  <h4>{bestPull.name}</h4>
-                  <p>
-                    {bestPull.rarity || 'Common'}
-                    {bestPull.isReverse ? ' • Reverse' : ''}
-                    {bestPull.isHolo ? ' • Holo' : ''}
-                    {bestPull.special ? ` • ${bestPull.special}` : ''}
-                  </p>
-                </div>
                 <div
                   className="best-pull-card clickable-card"
                   onClick={() =>
@@ -604,9 +608,19 @@ export default function PackOpener() {
                     })
                   }
                 >
-                  <div className="summary-card-face">
-                    {bestPull.images?.small ? <img src={bestPull.images.small} alt={bestPull.name} className="card-art" draggable={false} /> : <div className="card-status">No Image</div>}
-                  </div>
+                  {bestPull.images?.small
+                    ? <img src={bestPull.images.small} alt={bestPull.name} className="card-art" draggable={false} />
+                    : <div className="card-status">No Image</div>}
+                </div>
+                <div className="best-pull-copy">
+                  <span className="landing-eyebrow">Best pull</span>
+                  <h4>{bestPull.name}</h4>
+                  <p>
+                    {bestPull.rarity || 'Common'}
+                    {bestPull.isReverse ? ' • Reverse' : ''}
+                    {bestPull.isHolo ? ' • Holo' : ''}
+                    {bestPull.special ? ` • ${bestPull.special}` : ''}
+                  </p>
                 </div>
               </motion.div>
             )}

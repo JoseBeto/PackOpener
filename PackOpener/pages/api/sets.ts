@@ -81,7 +81,7 @@ function fetchWithCertBypass(url: string): Promise<any> {
 }
 
 // In-memory cache for quick access
-let inMemoryCache: { ts: number; sets: Array<{ id: string; name: string; releaseDate?: string }> } | null = null
+let inMemoryCache: { ts: number; sets: Array<{ id: string; name: string; releaseDate?: string; logo?: string }> } | null = null
 const CACHE_TTL = 1000 * 60 * 60 // 1 hour
 
 // Empty fallback - forces fresh fetch from tcgdex on every error
@@ -126,11 +126,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         5 // Limit to 5 concurrent requests
       )
       
-      const sets = setDetails.map((detail: any) => ({
-        id: detail.id,
-        name: detail.name,
-        releaseDate: detail.releaseDate
-      }))
+      const sets = setDetails.map((detail: any) => {
+        // TCGDex logo URL: detail.logo is a base URL without extension
+        const logo = detail.logo ? `${detail.logo}.png` : undefined
+        return {
+          id: detail.id,
+          name: detail.name,
+          releaseDate: detail.releaseDate,
+          ...(logo && { logo }),
+        }
+      })
       
       // Sort by release date, newest first
       sortSetsNewestFirst(sets)

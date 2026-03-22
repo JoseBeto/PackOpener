@@ -24,7 +24,7 @@ export function ensureCacheDir() {
   }
 }
 
-export type SetCacheEntry = { id: string; name: string; releaseDate?: string }
+export type SetCacheEntry = { id: string; name: string; releaseDate?: string; logo?: string }
 export type CardCacheEntry = { id: string; name: string; images: { small?: string; large?: string }; rarity?: string }
 
 // Sets cache
