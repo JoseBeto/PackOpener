@@ -110,6 +110,18 @@ class PocketSfx {
     this.playTone({ frequency: 300, frequencyEnd: 210, duration: 0.18, type: 'sawtooth', volume: 0.03 })
   }
 
+  tearOpen() {
+    this.playNoise({ duration: 0.27, volume: 0.07, highpass: 1450 })
+    this.playNoise({ duration: 0.18, volume: 0.05, highpass: 2200, delay: 0.05 })
+    this.playTone({ frequency: 360, frequencyEnd: 190, duration: 0.22, type: 'sawtooth', volume: 0.035 })
+    this.playTone({ frequency: 520, frequencyEnd: 260, duration: 0.16, type: 'triangle', volume: 0.026, delay: 0.06 })
+  }
+
+  packPop() {
+    this.playTone({ frequency: 320, frequencyEnd: 210, duration: 0.11, type: 'triangle', volume: 0.03 })
+    this.playNoise({ duration: 0.1, volume: 0.026, highpass: 1000, delay: 0.01 })
+  }
+
   whoosh() {
     this.playNoise({ duration: 0.14, volume: 0.03, highpass: 1400 })
     this.playTone({ frequency: 480, frequencyEnd: 260, duration: 0.17, type: 'triangle', volume: 0.032 })

@@ -62,6 +62,7 @@ export default function PackOpener() {
   const [swipeDirection, setSwipeDirection] = useState<1 | -1>(1)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [isSleeveCharging, setIsSleeveCharging] = useState(false)
+  const [isSleeveRipping, setIsSleeveRipping] = useState(false)
   const [isSleeveOpening, setIsSleeveOpening] = useState(false)
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
@@ -71,6 +72,8 @@ export default function PackOpener() {
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveChargeTimeoutRef = useRef<number | null>(null)
+  const sleeveRipTimeoutRef = useRef<number | null>(null)
+  const sleevePopTimeoutRef = useRef<number | null>(null)
   const sleeveOpenTimeoutRef = useRef<number | null>(null)
   const flipTimeoutRef = useRef<number | null>(null)
   const spotlightTimeoutRef = useRef<number | null>(null)
@@ -186,6 +189,8 @@ export default function PackOpener() {
   useEffect(() => {
     return () => {
       if (sleeveChargeTimeoutRef.current) window.clearTimeout(sleeveChargeTimeoutRef.current)
+      if (sleeveRipTimeoutRef.current) window.clearTimeout(sleeveRipTimeoutRef.current)
+      if (sleevePopTimeoutRef.current) window.clearTimeout(sleevePopTimeoutRef.current)
       if (sleeveOpenTimeoutRef.current) window.clearTimeout(sleeveOpenTimeoutRef.current)
       if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
       if (spotlightTimeoutRef.current) window.clearTimeout(spotlightTimeoutRef.current)
@@ -290,6 +295,14 @@ export default function PackOpener() {
       window.clearTimeout(sleeveChargeTimeoutRef.current)
       sleeveChargeTimeoutRef.current = null
     }
+    if (sleeveRipTimeoutRef.current) {
+      window.clearTimeout(sleeveRipTimeoutRef.current)
+      sleeveRipTimeoutRef.current = null
+    }
+    if (sleevePopTimeoutRef.current) {
+      window.clearTimeout(sleevePopTimeoutRef.current)
+      sleevePopTimeoutRef.current = null
+    }
     if (sleeveOpenTimeoutRef.current) {
       window.clearTimeout(sleeveOpenTimeoutRef.current)
       sleeveOpenTimeoutRef.current = null
@@ -306,6 +319,7 @@ export default function PackOpener() {
     setRevealIndex(0)
     setView(nextView)
     setIsSleeveCharging(false)
+    setIsSleeveRipping(false)
     setIsSleeveOpening(false)
     setIsCardFaceUp(false)
     setIsSpotlightMoment(false)
@@ -359,7 +373,7 @@ export default function PackOpener() {
   }
 
   function startSleeveOpen() {
-    if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging) return
+    if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging || isSleeveRipping) return
 
     setHasInteracted(true)
     sfxRef.current.unlock()
@@ -369,16 +383,31 @@ export default function PackOpener() {
 
     sleeveChargeTimeoutRef.current = window.setTimeout(() => {
       setIsSleeveCharging(false)
+      setIsSleeveRipping(true)
       setIsSleeveOpening(true)
-      sfxRef.current.tear()
+      sfxRef.current.tearOpen()
+      if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([12, 26, 10])
+      }
       sleeveChargeTimeoutRef.current = null
+
+      sleevePopTimeoutRef.current = window.setTimeout(() => {
+        sfxRef.current.packPop()
+        sleevePopTimeoutRef.current = null
+      }, 180)
+
+      sleeveRipTimeoutRef.current = window.setTimeout(() => {
+        setIsSleeveRipping(false)
+        sleeveRipTimeoutRef.current = null
+      }, 360)
 
       sleeveOpenTimeoutRef.current = window.setTimeout(() => {
         setView('opening')
+        setIsSleeveRipping(false)
         setIsSleeveOpening(false)
         sleeveOpenTimeoutRef.current = null
-      }, 820)
-    }, 320)
+      }, 900)
+    }, 260)
   }
 
   function toggleMuted() {
@@ -493,7 +522,7 @@ export default function PackOpener() {
       )}
 
       {view === 'sleeve' && currentPack.length > 0 && (
-        <section className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''}`}>
+        <section className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''} ${isSleeveRipping ? 'sleeve-is-ripping' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
@@ -521,22 +550,22 @@ export default function PackOpener() {
 
             <motion.button
               type="button"
-              className={`sleeve-stage ${isSleeveCharging ? 'is-charging' : ''} ${isSleeveOpening ? 'is-opening' : ''}`}
+              className={`sleeve-stage ${isSleeveCharging ? 'is-charging' : ''} ${isSleeveRipping ? 'is-ripping' : ''} ${isSleeveOpening ? 'is-opening' : ''}`}
               onClick={startSleeveOpen}
-              disabled={isSleeveOpening || isSleeveCharging}
+              disabled={isSleeveOpening || isSleeveCharging || isSleeveRipping}
               whileHover={{ scale: isSleeveOpening ? 1 : 1.01 }}
               whileTap={{ scale: isSleeveOpening ? 1 : 0.99 }}
               animate={
                 isSleeveOpening
-                  ? { rotateZ: [0, -1.2, 1.2, -0.8, 0], scale: [1, 1.01, 1] }
+                  ? { rotateZ: [0, -1.8, 1.7, -0.9, 0], scale: [1, 1.03, 1.005, 1] }
                   : isSleeveCharging
                   ? { rotateZ: [0, -0.5, 0.5, -0.2, 0], scale: [1, 1.03, 1.015] }
                   : { rotateZ: 0, scale: 1 }
               }
-              transition={{ duration: isSleeveCharging ? 0.32 : 0.52, ease: 'easeInOut' }}
+              transition={{ duration: isSleeveCharging ? 0.26 : 0.58, ease: 'easeInOut' }}
               aria-label="Open pack sleeve"
               onPointerMove={(e) => {
-                if (isSleeveOpening || isSleeveCharging) return
+                if (isSleeveOpening || isSleeveCharging || isSleeveRipping) return
                 const rect = e.currentTarget.getBoundingClientRect()
                 sleeveMxRaw.set(((e.clientX - rect.left) / rect.width - 0.5))
                 sleeveMxRawY.set(((e.clientY - rect.top) / rect.height - 0.5))
@@ -552,22 +581,33 @@ export default function PackOpener() {
                 transition={{ duration: 0.32, ease: 'easeOut' }}
               />
               <motion.div
+                className="sleeve-rip-impact"
+                animate={isSleeveRipping ? { opacity: [0, 0.95, 0], scale: [0.6, 1.08, 1.2] } : { opacity: 0, scale: 0.6 }}
+                transition={{ duration: 0.34, ease: 'easeOut' }}
+              />
+              <div className="sleeve-rip-shards" aria-hidden="true">
+                <span />
+                <span />
+                <span />
+                <span />
+              </div>
+              <motion.div
                 className="sleeve-shell"
-                animate={isSleeveOpening ? { y: 18 } : isSleeveCharging ? { y: -4 } : { y: 0 }}
-                transition={{ duration: 0.48 }}
+                animate={isSleeveOpening ? { y: [0, 8, 18], scale: [1, 1.015, 1] } : isSleeveCharging ? { y: -4 } : { y: 0, scale: 1 }}
+                transition={{ duration: 0.54, ease: 'easeOut' }}
                 style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
               >
                 <div className="sleeve-pocket" aria-hidden="true">
                   <motion.div
                     className="sleeve-deck"
-                    animate={isSleeveOpening ? { y: -150, opacity: 1, scale: 1 } : isSleeveCharging ? { y: 46, opacity: 1, scale: 1.015 } : { y: 56, opacity: 0.98, scale: 0.98 }}
-                    transition={{ duration: 0.62, delay: isSleeveOpening ? 0.16 : 0, ease: 'easeOut' }}
+                    animate={isSleeveOpening ? { y: [56, 34, -170], opacity: [0.98, 1, 1], scale: [0.98, 1.03, 1] } : isSleeveCharging ? { y: 46, opacity: 1, scale: 1.015 } : { y: 56, opacity: 0.98, scale: 0.98 }}
+                    transition={{ duration: 0.66, delay: isSleeveOpening ? 0.08 : 0, ease: [0.18, 0.84, 0.32, 1] }}
                   >
                     <img src="/card-back.png" alt="deck" className="deck-back" />
                   </motion.div>
                 </div>
-                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: -135, y: -12 } : { rotateX: 0, y: 0 }} transition={{ duration: 0.45 }} />
-                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: 1, opacity: 1 } : { scaleX: 0.2, opacity: 0.55 }} transition={{ duration: 0.28, delay: isSleeveOpening ? 0.12 : 0 }} />
+                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: [0, -148, -136], y: [0, -14, -10] } : { rotateX: 0, y: 0 }} transition={{ duration: 0.5, ease: 'easeOut' }} />
+                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.15, 1.16, 1], opacity: [0.4, 1, 0.96], y: [0, -2, 0] } : { scaleX: 0.2, opacity: 0.55, y: 0 }} transition={{ duration: 0.34, delay: isSleeveOpening ? 0.06 : 0, ease: 'easeOut' }} />
                 <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '130%'], opacity: [0, 0.85, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.58, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
                 <motion.div
                   className="sleeve-mouth-cover"
@@ -580,7 +620,7 @@ export default function PackOpener() {
                     : <div className="sleeve-brand">{setDisplayName}</div>
                   }
                   <div className="sleeve-packtype">{packTypeLabel}</div>
-                  <div className="sleeve-hint">{isSleeveCharging ? 'Charging...' : 'Tap to open'}</div>
+                  <div className="sleeve-hint">{isSleeveRipping ? 'Ripping...' : isSleeveCharging ? 'Charging...' : 'Tap to rip open'}</div>
                 </div>
               </motion.div>
             </motion.button>
