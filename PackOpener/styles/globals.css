@@ -143,7 +143,7 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .best-pull-secret{border-color:rgba(255,208,92,0.32);box-shadow:0 14px 32px rgba(255,208,92,0.18)}
 .best-pull-card{flex-shrink:0;width:90px;aspect-ratio:195/270;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.04);box-shadow:0 6px 18px rgba(0,0,0,0.32);display:flex;align-items:center;justify-content:center}
 .best-pull-card .card-art{border-radius:10px}
-.best-pull-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.best-pull-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;text-align:center}
 .best-pull-copy h4{margin:0;font-size:1.25rem;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .best-pull-copy p{margin:0;color:var(--muted);font-size:0.875rem;line-height:1.45}
 .opened-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(165px, calc(50vw - 28px)),1fr));gap:16px;align-items:start}
