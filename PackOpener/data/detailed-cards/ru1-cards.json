@@ -1,0 +1,23 @@
+{
+  "setId": "ru1",
+  "setName": "Pokémon Rumble",
+  "cardCount": 16,
+  "cardIds": [
+    "ru1-1",
+    "ru1-2",
+    "ru1-3",
+    "ru1-4",
+    "ru1-5",
+    "ru1-6",
+    "ru1-7",
+    "ru1-8",
+    "ru1-9",
+    "ru1-10",
+    "ru1-11",
+    "ru1-12",
+    "ru1-13",
+    "ru1-14",
+    "ru1-15",
+    "ru1-16"
+  ]
+}

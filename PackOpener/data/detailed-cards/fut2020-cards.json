@@ -1,0 +1,12 @@
+{
+  "setId": "fut2020",
+  "setName": "Pokémon Futsal 2020",
+  "cardCount": 5,
+  "cardIds": [
+    "fut2020-1",
+    "fut2020-2",
+    "fut2020-3",
+    "fut2020-4",
+    "fut2020-5"
+  ]
+}

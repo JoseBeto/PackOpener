@@ -1,0 +1,70 @@
+{
+  "standard": {
+    "name": "Standard Pokémon Pack",
+    "cardsPerPack": 11,
+    "template": "modern",
+    "slotWeights": {
+      "reverse": {
+        "Common": 0.6,
+        "Uncommon": 0.3,
+        "Rare": 0.1
+      },
+      "rareSlot": {
+        "holoRare": 0.55,
+        "doubleRare": 0.22,
+        "illustrationRare": 0.10,
+        "ultraRare": 0.06,
+        "specialIllustrationRare": 0.05,
+        "hyperRare": 0.02
+      },
+      "bonusSlot": {
+        "reverseHolo": 0.88,
+        "illustration": 0.07,
+        "ultra": 0.04,
+        "secret": 0.01
+      },
+      "bonusReverse": {
+        "Common": 0.6,
+        "Uncommon": 0.3,
+        "Rare": 0.1
+      }
+    },
+    "guarantee": {
+      "minRareOrAbove": 1
+    }
+  },
+  "premium": {
+    "name": "Premium Pack (higher pulls)",
+    "cardsPerPack": 11,
+    "template": "modern",
+    "slotWeights": {
+      "reverse": {
+        "Common": 0.5,
+        "Uncommon": 0.35,
+        "Rare": 0.15
+      },
+      "rareSlot": {
+        "holoRare": 0.35,
+        "doubleRare": 0.30,
+        "illustrationRare": 0.17,
+        "ultraRare": 0.10,
+        "specialIllustrationRare": 0.06,
+        "hyperRare": 0.02
+      },
+      "bonusSlot": {
+        "reverseHolo": 0.70,
+        "illustration": 0.15,
+        "ultra": 0.10,
+        "secret": 0.05
+      },
+      "bonusReverse": {
+        "Common": 0.5,
+        "Uncommon": 0.35,
+        "Rare": 0.15
+      }
+    },
+    "guarantee": {
+      "minRareOrAbove": 1
+    }
+  }
+}

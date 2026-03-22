@@ -1,0 +1,16 @@
+{
+  "setId": "bog",
+  "setName": "Best of game",
+  "cardCount": 9,
+  "cardIds": [
+    "bog-1",
+    "bog-2",
+    "bog-3",
+    "bog-4",
+    "bog-5",
+    "bog-6",
+    "bog-7",
+    "bog-8",
+    "bog-9"
+  ]
+}
