@@ -169,14 +169,14 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     }
   } else {
     // modern slot-based pack template (SV era and newer)
-    // Compact 7-card pack structure:
-    // - 4 normal cards (2 commons + 2 uncommons)
+    // Compact 6-card pack structure:
+    // - 3 normal cards (1 common + 2 uncommons)
     // - 1 reverse holo (common/uncommon/rare)
     // - 1 holo-or-better rare slot (uses configured pull rates)
     // - 1 bonus slot (usually reverse, occasional hit)
 
-    // 4 normal cards (reduced from 7): 2 commons + 2 uncommons
-    for (let i = 0; i < 2; i++) result.push(pickByRarity('Common'))
+    // 3 normal cards: 1 common + 2 uncommons
+    result.push(pickByRarity('Common'))
     for (let i = 0; i < 2; i++) result.push(pickByRarity('Uncommon'))
 
     // Card 9: Reverse holo slot (can be common, uncommon, or rare)

@@ -1,7 +1,7 @@
 {
   "standard": {
     "name": "Standard Pokémon Pack",
-    "cardsPerPack": 7,
+    "cardsPerPack": 6,
     "template": "modern",
     "slotWeights": {
       "reverse": {
@@ -35,7 +35,7 @@
   },
   "premium": {
     "name": "Premium Pack (higher pulls)",
-    "cardsPerPack": 7,
+    "cardsPerPack": 6,
     "template": "modern",
     "slotWeights": {
       "reverse": {

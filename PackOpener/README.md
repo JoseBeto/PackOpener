@@ -26,7 +26,7 @@ rates** rather than a flat percentage per card.
 
 A modern pack contains (compact mode):
 
-1. Four normal cards total (2 commons + 2 uncommons)
+1. Three normal cards total (1 common + 2 uncommons)
 2. One reverse‑holo slot (can be any rarity; default weights: 60% common, 30% uncommon,
    8% rare, 2% ultra)
 3. One rare slot with weighted outcomes:
