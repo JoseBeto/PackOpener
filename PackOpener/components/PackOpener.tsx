@@ -290,6 +290,37 @@ export default function PackOpener() {
     }
   }
 
+  function preloadImage(url?: string) {
+    if (!url || typeof window === 'undefined') return Promise.resolve()
+    return new Promise<void>((resolve) => {
+      const image = new Image()
+      image.decoding = 'async'
+      image.src = url
+      if (image.complete) {
+        resolve()
+        return
+      }
+      image.onload = () => resolve()
+      image.onerror = () => resolve()
+    })
+  }
+
+  function preloadCardImage(card?: Card | null) {
+    if (!card) return
+    const high = card.images?.large
+    const fallback = card.images?.small
+    const target = high || fallback
+    if (!target) return
+
+    preloadImage(target).then(() => {
+      setLoadedImages((prev) => (prev[card.id] ? prev : { ...prev, [card.id]: true }))
+    })
+  }
+
+  function preloadPackImages(pack: Card[]) {
+    pack.forEach((card) => preloadCardImage(card))
+  }
+
   function resetFlow(nextView: OpeningView = 'select') {
     if (sleeveChargeTimeoutRef.current) {
       window.clearTimeout(sleeveChargeTimeoutRef.current)
@@ -350,6 +381,7 @@ export default function PackOpener() {
     setHasInteracted(true)
     sfxRef.current.unlock()
     sfxRef.current.tap()
+    preloadPackImages(pack)
 
     setCurrentPack(pack)
     setRevealIndex(0)
@@ -371,6 +403,13 @@ export default function PackOpener() {
     setIsTransitioning(true)
     setRevealIndex((prev) => prev + 1)
   }
+
+  useEffect(() => {
+    if (view !== 'opening' || currentPack.length === 0) return
+    preloadCardImage(currentPack[revealIndex])
+    preloadCardImage(currentPack[revealIndex + 1])
+    preloadCardImage(currentPack[revealIndex + 2])
+  }, [view, currentPack, revealIndex])
 
   function startSleeveOpen() {
     if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging || isSleeveRipping) return
@@ -748,7 +787,7 @@ export default function PackOpener() {
                       <div className="opening-card-face opening-card-face-front">
                         {(visibleCard.images?.large || visibleCard.images?.small) ? (
                           <>
-                            {!loadedImages[visibleCard.id] && <div className="card-status">Loading...</div>}
+                            {!loadedImages[visibleCard.id] && <div className="card-loading-veil" />}
                             <img
                               src={visibleCard.images.large || visibleCard.images.small}
                               alt={visibleCard.name}
@@ -868,7 +907,7 @@ export default function PackOpener() {
                   <div className="summary-card-face">
                     {c.images?.small ? (
                       <>
-                        {!loadedImages[c.id] && <div className="card-status">Loading...</div>}
+                        {!loadedImages[c.id] && <div className="card-loading-veil" />}
                         <img
                           src={c.images.small}
                           alt={c.name}
