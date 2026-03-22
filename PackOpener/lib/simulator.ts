@@ -34,16 +34,38 @@ type PackDefinition = {
 function rarityToKey(r: string | undefined) {
   if (!r) return 'Common'
   const val = r.toLowerCase()
-  if (val.includes('secret')) return 'Secret'
-  if (val.includes('ultra') || val.includes('ex') || val.includes('vmax') || val.includes('vstar') || val.includes('crown') || val.includes('hyper')) return 'Ultra'
-  if (val.includes('rare') || val.includes('holo') || val.includes('holofoil')) return 'Rare'
-  if (val.includes('uncommon') || val.includes('unco')) return 'Uncommon'
+  if (val.includes('secret') || val.includes('hyper') || val.includes('crown') || val.includes('three star')) return 'Secret'
+  if (
+    val.includes('ultra') ||
+    val.includes('ex') ||
+    val.includes('vmax') ||
+    val.includes('vstar') ||
+    val.includes('double rare') ||
+    val.includes('two star') ||
+    val.includes('one shiny') ||
+    val.includes('two shiny')
+  ) return 'Ultra'
+  if (
+    val.includes('rare') ||
+    val.includes('holo') ||
+    val.includes('holofoil') ||
+    val.includes('one star') ||
+    val.includes('four diamond') ||
+    val.includes('three diamond')
+  ) return 'Rare'
+  if (val.includes('uncommon') || val.includes('unco') || val.includes('two diamond')) return 'Uncommon'
   return 'Common'
+}
+
+function isPocketSetId(setId: string) {
+  const id = setId.trim().toUpperCase()
+  return /^(A\d+[A-Z]?|B\d+[A-Z]?|P-A)$/.test(id)
 }
 
 export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { setId?: string }) {
   const result: Card[] = []
   const setId = opts?.setId || ''
+  const isPocketSet = isPocketSetId(setId)
 
   // Get rarity weight map from packDef or use defaults
   const rarityWeightMap = packDef.rarityWeightMap || new Map([
@@ -121,8 +143,20 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isIllustration = (card: Card) => rarityText(card).includes('illustration') && !isSpecialIllustration(card)
   const isHyper = (card: Card) => rarityText(card).includes('hyper')
   const isSecret = (card: Card) => rarityText(card).includes('secret')
+  const isCrown = (card: Card) => rarityText(card).includes('crown')
+  const isGoldTier = (card: Card) => isSecret(card) || isHyper(card) || isCrown(card)
   const isDoubleRare = (card: Card) => rarityText(card).includes('double rare') || rarityText(card) === 'double rare'
-  const isUltraRare = (card: Card) => rarityText(card).includes('ultra') && !isHyper(card)
+  const isUltraRare = (card: Card) => rarityText(card).includes('ultra') && !isGoldTier(card)
+  const isPocketOneDiamond = (card: Card) => rarityText(card).includes('one diamond')
+  const isPocketTwoDiamond = (card: Card) => rarityText(card).includes('two diamond')
+  const isPocketThreeDiamond = (card: Card) => rarityText(card).includes('three diamond')
+  const isPocketFourDiamond = (card: Card) => rarityText(card).includes('four diamond')
+  const isPocketOneStar = (card: Card) => rarityText(card).includes('one star')
+  const isPocketTwoStar = (card: Card) => rarityText(card).includes('two star')
+  const isPocketThreeStar = (card: Card) => rarityText(card).includes('three star')
+  const isPocketOneShiny = (card: Card) => rarityText(card).includes('one shiny')
+  const isPocketTwoShiny = (card: Card) => rarityText(card).includes('two shiny')
+  const isPocketCrown = (card: Card) => rarityText(card).includes('crown')
   const isBaseRareFamily = (card: Card) => {
     const text = rarityText(card)
     if (!text.includes('rare')) return false
@@ -132,7 +166,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
   // decide whether we should use the modern slot-based template
   // support all SV sets (sv01-sv99) and mark newer 2025 eras as modern
-  const useSlotTemplate = /^sv\d+/.test(setId) || packDef.template === 'modern'
+  const useSlotTemplate = isPocketSet || /^sv\d+/.test(setId) || packDef.template === 'modern'
 
   if (!useSlotTemplate) {
     // Default generic pack behavior
@@ -175,12 +209,23 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     // - 1 holo-or-better rare slot (uses configured pull rates)
     // - 1 bonus slot (usually reverse, occasional hit)
 
-    // 3 normal cards: 1 common + 2 uncommons
-    result.push(pickByRarity('Common'))
-    for (let i = 0; i < 2; i++) result.push(pickByRarity('Uncommon'))
+    // 3 normal cards:
+    // - Mainline: 1 common + 2 uncommons
+    // - Pocket: 1 one-diamond + 2 two-diamond
+    if (isPocketSet) {
+      result.push(pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c)), () => pickByRarity('Common')))
+      for (let i = 0; i < 2; i++) {
+        result.push(pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon')))
+      }
+    } else {
+      result.push(pickByRarity('Common'))
+      for (let i = 0; i < 2; i++) result.push(pickByRarity('Uncommon'))
+    }
 
     // Card 9: Reverse holo slot (can be common, uncommon, or rare)
-    const reverseWeights = packDef.slotWeights?.reverse || { Common: 0.6, Uncommon: 0.3, Rare: 0.1 }
+    const reverseWeights = isPocketSet
+      ? { oneDiamond: 0.46, twoDiamond: 0.39, threeDiamond: 0.15 }
+      : (packDef.slotWeights?.reverse || { Common: 0.6, Uncommon: 0.3, Rare: 0.1 })
     const revRarityKeys = Object.keys(reverseWeights)
     const revRarityVals = revRarityKeys.map((k) => reverseWeights[k])
     const reverseTotal = revRarityVals.reduce((a, b) => a + b, 0)
@@ -199,6 +244,12 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     let reverseCard: Card
     if (chosenRevRarity === 'Rare') {
       reverseCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'))
+    } else if (chosenRevRarity === 'oneDiamond') {
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c)), () => pickByRarity('Common'))
+    } else if (chosenRevRarity === 'twoDiamond') {
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon'))
+    } else if (chosenRevRarity === 'threeDiamond') {
+      reverseCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
     } else {
       reverseCard = pickByRarity(chosenRevRarity)
     }
@@ -207,15 +258,27 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     result.push(reverseCard)
 
      // Card 10: Holo-or-better rare slot (weighted distribution)
-     // Modern pull rates: Holo 45%, Double 25%, Illustration 15%, Ultra 8%, Special Ill 5%, Hyper 2%
-     const rareSlotWeights = packDef.slotWeights?.rareSlot || {
-       holoRare: 0.45,
-       doubleRare: 0.25,
-       illustrationRare: 0.15,
-       ultraRare: 0.08,
-       specialIllustrationRare: 0.05,
-       hyperRare: 0.02
-     }
+     // Mainline custom 6-card model:
+     // Holo 53%, Double 28%, Illustration 10%, Ultra 6%, Special Ill 2.5%, Gold 0.5%
+     // Pocket custom model:
+     // Three Diamond 42%, Four Diamond 31%, One Star 16%, Two Star/Two Shiny 7%, Three Star 3%, Crown 1%
+     const rareSlotWeights = isPocketSet
+       ? {
+           threeDiamond: 0.42,
+           fourDiamond: 0.31,
+           oneStar: 0.16,
+           twoStar: 0.07,
+           threeStar: 0.03,
+           crown: 0.01
+         }
+       : (packDef.slotWeights?.rareSlot || {
+           holoRare: 0.53,
+           doubleRare: 0.28,
+           illustrationRare: 0.10,
+           ultraRare: 0.06,
+           specialIllustrationRare: 0.025,
+           goldRare: 0.005
+         })
     const rareKeys = Object.keys(rareSlotWeights)
     const rareVals = rareKeys.map((k) => rareSlotWeights[k] as number)
     const rareTotal = rareVals.reduce((a, b) => a + b, 0)
@@ -236,6 +299,32 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        rareCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'))
        rareCard.isHolo = true
        rareCard.isReverse = false
+     } else if (chosenRareCategory === 'threeDiamond') {
+       rareCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
+       rareCard.isHolo = true
+       rareCard.isReverse = false
+     } else if (chosenRareCategory === 'fourDiamond') {
+       rareCard = pickFromCandidates(pool.filter((c) => isPocketFourDiamond(c)), () => pickByRarity('Ultra'))
+       rareCard.isHolo = true
+       rareCard.special = 'DoubleRare'
+     } else if (chosenRareCategory === 'oneStar') {
+       rareCard = pickFromCandidates(pool.filter((c) => isPocketOneStar(c)), () => pickByRarity('Rare'))
+       rareCard.isHolo = true
+       rareCard.special = 'Illustration'
+     } else if (chosenRareCategory === 'twoStar') {
+       rareCard = pickFromCandidates(
+         pool.filter((c) => isPocketTwoStar(c) || isPocketOneShiny(c) || isPocketTwoShiny(c)),
+         () => pickByRarity('Ultra')
+       )
+       rareCard.isHolo = true
+     } else if (chosenRareCategory === 'threeStar') {
+       rareCard = pickFromCandidates(pool.filter((c) => isPocketThreeStar(c)), () => pickByRarity('Ultra'))
+       rareCard.isHolo = true
+       rareCard.special = 'SpecialIllustration'
+     } else if (chosenRareCategory === 'crown') {
+       rareCard = pickFromCandidates(pool.filter((c) => isPocketCrown(c)), () => pickByRarity('Ultra'))
+       rareCard.isHolo = true
+       rareCard.special = 'GoldRare'
      } else if (chosenRareCategory === 'doubleRare') {
        rareCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'))
        rareCard.isHolo = true
@@ -248,18 +337,21 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        rareCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
        rareCard.isHolo = true
      } else if (chosenRareCategory === 'specialIllustrationRare') {
-       rareCard = pickFromCandidates(pool.filter((c) => isSpecialIllustration(c)), () => pickByRarity('Ultra'))
+       rareCard = pickFromCandidates(
+         pool.filter((c) => isSpecialIllustration(c)),
+         () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra'))
+       )
        rareCard.isHolo = true
        rareCard.special = 'SpecialIllustration'
-     } else if (chosenRareCategory === 'hyperRare') {
-       const secretCandidates = pool.filter((c) => isSecret(c) || isHyper(c))
+     } else if (chosenRareCategory === 'hyperRare' || chosenRareCategory === 'goldRare') {
+       const secretCandidates = pool.filter((c) => isGoldTier(c))
        if (secretCandidates.length > 0) {
          rareCard = { ...secretCandidates[Math.floor(Math.random() * secretCandidates.length)] }
        } else {
          rareCard = pickByRarity('Ultra')
        }
        rareCard.isHolo = true
-       rareCard.special = 'HyperRare'
+       rareCard.special = 'GoldRare'
      } else {
       rareCard = pickByRarity('Rare')
        rareCard.isHolo = true
@@ -267,13 +359,26 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
      result.push(rareCard)
 
-     // Card 11: Bonus slot (can be reverse holo, illustration, ultra, or secret)
-     const bonusWeights = packDef.slotWeights?.bonusSlot || {
-       reverseHolo: 0.82,
-       illustration: 0.10,
-       ultra: 0.06,
-       secret: 0.02
-     }
+     // Card 11: Bonus slot
+     // Mainline: mostly reverse with low chance for additional hit
+     // Pocket: mostly lower diamonds with small chance of extra star/crown hit
+     const bonusWeights = isPocketSet
+       ? {
+           reversePocket: 0.89,
+           fourDiamond: 0.065,
+           oneStar: 0.028,
+           twoStar: 0.012,
+           threeStar: 0.004,
+           crown: 0.001
+         }
+       : (packDef.slotWeights?.bonusSlot || {
+           reverseHolo: 0.915,
+           doubleRare: 0.04,
+           illustration: 0.028,
+           ultra: 0.013,
+           specialIllustration: 0.003,
+           gold: 0.001
+         })
      const bonusKeys = Object.keys(bonusWeights)
      const bonusVals = bonusKeys.map((k) => bonusWeights[k] as number)
      const bonusTotal = bonusVals.reduce((a, b) => a + b, 0)
@@ -290,7 +395,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      }
 
      let bonusCard: Card
-     if (chosenBonusCategory === 'reverseHolo') {
+    if (chosenBonusCategory === 'reverseHolo') {
        // Another reverse holo, could be any rarity
        const bonusRevWeights = packDef.slotWeights?.bonusReverse || { Common: 0.4, Uncommon: 0.4, Rare: 0.2 }
        const bonusRevKeys = Object.keys(bonusRevWeights)
@@ -313,22 +418,79 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
       }
       bonusCard.isReverse = true
       bonusCard.isHolo = true
+     } else if (chosenBonusCategory === 'reversePocket') {
+       const pocketReverseWeights = { oneDiamond: 0.46, twoDiamond: 0.39, threeDiamond: 0.15 }
+       const pocketKeys = Object.keys(pocketReverseWeights)
+       const pocketVals = pocketKeys.map((k) => pocketReverseWeights[k as keyof typeof pocketReverseWeights] as number)
+       const pocketTotal = pocketVals.reduce((a, b) => a + b, 0)
+       roll = Math.random() * pocketTotal
+       let chosenPocketBonus = pocketKeys[0]
+       acc = 0
+       for (let i = 0; i < pocketKeys.length; i++) {
+         acc += pocketVals[i]
+         if (roll <= acc) {
+           chosenPocketBonus = pocketKeys[i]
+           break
+         }
+       }
+       if (chosenPocketBonus === 'oneDiamond') {
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c)), () => pickByRarity('Common'))
+       } else if (chosenPocketBonus === 'twoDiamond') {
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon'))
+       } else {
+         bonusCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
+       }
+       bonusCard.isReverse = true
+       bonusCard.isHolo = true
+     } else if (chosenBonusCategory === 'fourDiamond') {
+       bonusCard = pickFromCandidates(pool.filter((c) => isPocketFourDiamond(c)), () => pickByRarity('Ultra'))
+       bonusCard.isHolo = true
+       bonusCard.special = 'DoubleRare'
+     } else if (chosenBonusCategory === 'oneStar') {
+       bonusCard = pickFromCandidates(pool.filter((c) => isPocketOneStar(c)), () => pickByRarity('Rare'))
+       bonusCard.isHolo = true
+       bonusCard.special = 'Illustration'
+     } else if (chosenBonusCategory === 'twoStar') {
+       bonusCard = pickFromCandidates(
+         pool.filter((c) => isPocketTwoStar(c) || isPocketOneShiny(c) || isPocketTwoShiny(c)),
+         () => pickByRarity('Ultra')
+       )
+       bonusCard.isHolo = true
+     } else if (chosenBonusCategory === 'threeStar') {
+       bonusCard = pickFromCandidates(pool.filter((c) => isPocketThreeStar(c)), () => pickByRarity('Ultra'))
+       bonusCard.isHolo = true
+       bonusCard.special = 'SpecialIllustration'
+     } else if (chosenBonusCategory === 'crown') {
+       bonusCard = pickFromCandidates(pool.filter((c) => isPocketCrown(c)), () => pickByRarity('Ultra'))
+       bonusCard.isHolo = true
+       bonusCard.special = 'GoldRare'
      } else if (chosenBonusCategory === 'illustration') {
        bonusCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'))
        bonusCard.isHolo = true
        bonusCard.special = 'Illustration'
+     } else if (chosenBonusCategory === 'doubleRare') {
+       bonusCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'))
+       bonusCard.isHolo = true
+       bonusCard.special = 'DoubleRare'
      } else if (chosenBonusCategory === 'ultra') {
        bonusCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
        bonusCard.isHolo = true
-     } else if (chosenBonusCategory === 'secret') {
-       const secretCandidates = pool.filter((c) => isSecret(c) || isHyper(c) || isSpecialIllustration(c))
+     } else if (chosenBonusCategory === 'specialIllustration') {
+       bonusCard = pickFromCandidates(
+         pool.filter((c) => isSpecialIllustration(c)),
+         () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra'))
+       )
+       bonusCard.isHolo = true
+       bonusCard.special = 'SpecialIllustration'
+     } else if (chosenBonusCategory === 'secret' || chosenBonusCategory === 'gold') {
+       const secretCandidates = pool.filter((c) => isGoldTier(c))
        if (secretCandidates.length > 0) {
          bonusCard = { ...secretCandidates[Math.floor(Math.random() * secretCandidates.length)] }
        } else {
          bonusCard = pickByRarity('Ultra')
        }
        bonusCard.isHolo = true
-       bonusCard.special = 'SecretRare'
+       bonusCard.special = 'GoldRare'
      } else {
        bonusCard = pickByRarity('Rare')
        bonusCard.isHolo = true

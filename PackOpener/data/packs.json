@@ -10,18 +10,20 @@
         "Rare": 0.1
       },
       "rareSlot": {
-        "holoRare": 0.55,
-        "doubleRare": 0.22,
+        "holoRare": 0.53,
+        "doubleRare": 0.28,
         "illustrationRare": 0.10,
         "ultraRare": 0.06,
-        "specialIllustrationRare": 0.05,
-        "hyperRare": 0.02
+        "specialIllustrationRare": 0.025,
+        "goldRare": 0.005
       },
       "bonusSlot": {
-        "reverseHolo": 0.88,
-        "illustration": 0.07,
-        "ultra": 0.04,
-        "secret": 0.01
+        "reverseHolo": 0.915,
+        "doubleRare": 0.04,
+        "illustration": 0.028,
+        "ultra": 0.013,
+        "specialIllustration": 0.003,
+        "gold": 0.001
       },
       "bonusReverse": {
         "Common": 0.6,
@@ -44,18 +46,20 @@
         "Rare": 0.15
       },
       "rareSlot": {
-        "holoRare": 0.35,
-        "doubleRare": 0.30,
-        "illustrationRare": 0.17,
+        "holoRare": 0.38,
+        "doubleRare": 0.31,
+        "illustrationRare": 0.14,
         "ultraRare": 0.10,
-        "specialIllustrationRare": 0.06,
-        "hyperRare": 0.02
+        "specialIllustrationRare": 0.055,
+        "goldRare": 0.015
       },
       "bonusSlot": {
-        "reverseHolo": 0.70,
-        "illustration": 0.15,
-        "ultra": 0.10,
-        "secret": 0.05
+        "reverseHolo": 0.80,
+        "doubleRare": 0.09,
+        "illustration": 0.055,
+        "ultra": 0.03,
+        "specialIllustration": 0.02,
+        "gold": 0.005
       },
       "bonusReverse": {
         "Common": 0.5,

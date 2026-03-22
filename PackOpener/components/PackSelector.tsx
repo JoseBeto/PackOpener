@@ -29,6 +29,11 @@ function sortSetsNewestFirst(sets: SetItem[]): SetItem[] {
   })
 }
 
+function isPocketSetId(setId: string) {
+  const id = setId.trim().toUpperCase()
+  return /^(A\d+[A-Z]?|B\d+[A-Z]?|P-A)$/.test(id)
+}
+
 type Props = {
   setId: string
   onSetIdChange: (v: string) => void
@@ -39,6 +44,7 @@ type Props = {
 export default function PackSelector({ setId, onSetIdChange, packType, onPackTypeChange }: Props) {
   const [sets, setSets] = useState<SetItem[]>([])
   const [loading, setLoading] = useState(false)
+  const isPocketSet = isPocketSetId(setId)
 
   useEffect(() => {
     let mounted = true
@@ -85,29 +91,45 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
   }, [])
 
   return (
-    <div className="control-row">
-      <label className="field-label">
-        <span className="field-title">Set</span>
-        {loading ? (
-          <div className="field-loading">Loading sets…</div>
-        ) : sets.length > 0 ? (
-          <select value={setId} onChange={(e) => onSetIdChange(e.target.value)} className="field-input">
-            {sets.map((s) => (
-              <option key={s.id} value={s.id}>{s.name} — {s.id}</option>
-            ))}
-          </select>
-        ) : (
-          <input value={setId} onChange={(e) => onSetIdChange(e.target.value)} placeholder="ex: sv1" className="field-input" />
-        )}
-      </label>
+    <>
+      <div className="control-row">
+        <label className="field-label">
+          <span className="field-title">Set</span>
+          {loading ? (
+            <div className="field-loading">Loading sets…</div>
+          ) : sets.length > 0 ? (
+            <select value={setId} onChange={(e) => onSetIdChange(e.target.value)} className="field-input">
+              {sets.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} — {s.id}</option>
+              ))}
+            </select>
+          ) : (
+            <input value={setId} onChange={(e) => onSetIdChange(e.target.value)} placeholder="ex: sv1" className="field-input" />
+          )}
+        </label>
 
-      <label className="field-label">
-        <span className="field-title">Pack</span>
-        <select value={packType} onChange={(e) => onPackTypeChange(e.target.value)} className="field-input">
-          <option value="standard">Standard</option>
-          <option value="premium">Premium</option>
-        </select>
-      </label>
-    </div>
+        <label className="field-label">
+          <span className="field-title">Pack</span>
+          <select value={packType} onChange={(e) => onPackTypeChange(e.target.value)} className="field-input">
+            <option value="standard">Standard</option>
+            <option value="premium">Premium</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="rarity-system-panel" role="note" aria-live="polite">
+        <div className="rarity-system-head">
+          <span className="rarity-system-label">Set Type</span>
+          <strong className="rarity-system-value">{isPocketSet ? 'Pokémon TCG Pocket' : 'Pokémon TCG Mainline'}</strong>
+        </div>
+        <div className="rarity-system-legend">
+          {isPocketSet ? (
+            <span>Rarity tiers: 1◊/2◊ (base), 3◊, 4◊, 1★, 2★/Shiny, 3★, Crown</span>
+          ) : (
+            <span>Rarity tiers: Holo, Double Rare, Illustration Rare, Ultra Rare, Special Illustration Rare, Gold</span>
+          )}
+        </div>
+      </div>
+    </>
   )
 }

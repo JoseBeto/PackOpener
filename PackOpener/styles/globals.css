@@ -56,6 +56,9 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .compact-ui .pack-stat{padding:8px 10px}
 .compact-ui .pack-stat span{font-size:.78rem}
 .compact-ui .pack-stat strong{font-size:.8rem}
+.compact-ui .rarity-system-panel{padding:8px 10px;gap:5px}
+.compact-ui .rarity-system-value{font-size:.78rem}
+.compact-ui .rarity-system-legend{font-size:.72rem}
 .compact-ui .sleeve-copy h3{margin:6px 0 2px}
 .compact-ui .opening-stage{gap:8px}
 .compact-ui .reveal-banner{padding:6px 10px;font-size:.68rem}
@@ -113,6 +116,11 @@ body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,"Helve
 .field-title{color:var(--muted);font-size:0.92rem;font-weight:700}
 .field-input,.field-loading{padding:12px 13px;border-radius:12px;background:var(--card);color:var(--text);border:1px solid rgba(255,255,255,0.1);min-width:0;width:100%;font:inherit}
 .field-loading{color:var(--muted)}
+.rarity-system-panel{border:1px solid rgba(255,255,255,0.08);background:rgba(8,14,26,0.56);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.rarity-system-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.rarity-system-label{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#8be9f5;font-weight:800}
+.rarity-system-value{font-size:.84rem;color:var(--text);font-weight:700}
+.rarity-system-legend{font-size:.78rem;line-height:1.35;color:#a7bfd5}
 .status-panel{display:flex;flex-direction:column;gap:6px;align-items:center;min-width:0;text-align:center}
 .status-text{color:var(--muted);font-size:0.875rem;line-height:1.35}
 .status-badge{margin-left:8px;color:var(--text);font-weight:600}

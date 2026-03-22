@@ -22,12 +22,36 @@ function getCardRank(card?: Card | null) {
   const rarity = (card.rarity || '').toLowerCase()
   const special = (card.special || '').toLowerCase()
 
+  const isPocketCrown = rarity.includes('crown')
+  const isPocketThreeStar = rarity.includes('three star')
+  const isPocketTwoStar = rarity.includes('two star')
+  const isPocketOneStar = rarity.includes('one star')
+  const isPocketTwoShiny = rarity.includes('two shiny')
+  const isPocketOneShiny = rarity.includes('one shiny')
+  const isPocketFourDiamond = rarity.includes('four diamond')
+  const isPocketThreeDiamond = rarity.includes('three diamond')
+
+  const isGoldTier =
+    special.includes('gold') ||
+    special.includes('hyper') ||
+    special.includes('secret') ||
+    rarity.includes('hyper') ||
+    rarity.includes('secret') ||
+    rarity.includes('crown') ||
+    rarity.includes('mega hyper')
+
   if (special.includes('godpack')) return 100
-  if (special.includes('secret') || rarity.includes('hyper') || rarity.includes('secret')) return 95
+  if (isPocketCrown) return 95
+  if (isPocketThreeStar || isPocketTwoShiny) return 90
+  if (isPocketTwoStar || isPocketOneShiny) return 74
+  if (isPocketOneStar) return 82
+  if (isPocketFourDiamond) return 58
+  if (isPocketThreeDiamond) return 40
+  if (isGoldTier) return 95
   if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
   if (special.includes('illustration') || rarity.includes('illustration')) return 82
-  if (special.includes('doublerare') || rarity.includes('double rare')) return 74
   if (rarity.includes('ultra')) return 68
+  if (special.includes('doublerare') || rarity.includes('double rare')) return 58
   if (card.isReverse) return 46
   if (card.isHolo || rarity.includes('holo')) return 40
   if (rarity.includes('rare')) return 30
