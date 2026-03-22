@@ -169,27 +169,15 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     }
   } else {
     // modern slot-based pack template (SV era and newer)
-    // Standard 11-card pack structure:
-    // - 1 energy
-    // - 4 commons
-    // - 3 uncommons
+    // Compact 7-card pack structure:
+    // - 4 normal cards (2 commons + 2 uncommons)
     // - 1 reverse holo (common/uncommon/rare)
     // - 1 holo-or-better rare slot (uses configured pull rates)
     // - 1 bonus slot (usually reverse, occasional hit)
 
-    // 1 energy slot
-    const energyCandidates = pool.filter((c) => /energy/i.test(c.name))
-    if (energyCandidates.length > 0) {
-      result.push({ ...energyCandidates[Math.floor(Math.random() * energyCandidates.length)] })
-    } else {
-      result.push(pickByRarity('Common'))
-    }
-
-    // 4 commons
-    for (let i = 0; i < 4; i++) result.push(pickByRarity('Common'))
-
-    // 3 uncommons
-    for (let i = 0; i < 3; i++) result.push(pickByRarity('Uncommon'))
+    // 4 normal cards (reduced from 7): 2 commons + 2 uncommons
+    for (let i = 0; i < 2; i++) result.push(pickByRarity('Common'))
+    for (let i = 0; i < 2; i++) result.push(pickByRarity('Uncommon'))
 
     // Card 9: Reverse holo slot (can be common, uncommon, or rare)
     const reverseWeights = packDef.slotWeights?.reverse || { Common: 0.6, Uncommon: 0.3, Rare: 0.1 }

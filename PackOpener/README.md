@@ -24,14 +24,12 @@ The core of the app is a simple booster pack simulator. To keep things realistic
 recent sets (Scarlet & Violet era and newer) the generator uses **slot‑based pull
 rates** rather than a flat percentage per card.
 
-A modern pack contains:
+A modern pack contains (compact mode):
 
-1. Basic Energy card (filtered out of the display)
-2. Four guaranteed commons
-3. Three guaranteed uncommons
-4. One reverse‑holo slot (can be any rarity; default weights: 60% common, 30% uncommon,
+1. Four normal cards total (2 commons + 2 uncommons)
+2. One reverse‑holo slot (can be any rarity; default weights: 60% common, 30% uncommon,
    8% rare, 2% ultra)
-5. One rare slot with weighted outcomes:
+3. One rare slot with weighted outcomes:
    - Regular Rare (~72%)
    - Holo Rare (~17%)
    - Ultra Rare (~6%)
