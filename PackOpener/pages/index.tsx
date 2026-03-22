@@ -12,10 +12,10 @@ export default function Home() {
           PackOpener
         </motion.h1>
         <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.8 }}>
-          Open packs with realistic pull simulation and build your personal Showcase in Profile.
+          Open packs fast. Track your best pulls.
         </motion.p>
 
-        <div style={{ marginTop: 18 }}>
+        <div className="packopener-host">
           <PackOpener />
         </div>
       </section>

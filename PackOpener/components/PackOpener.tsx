@@ -66,6 +66,8 @@ export default function PackOpener() {
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [isCompactMode, setIsCompactMode] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveChargeTimeoutRef = useRef<number | null>(null)
@@ -97,6 +99,7 @@ export default function PackOpener() {
     return [...currentPack].sort((a, b) => getCardRank(b) - getCardRank(a))[0]
   }, [currentPack])
   const bestPullHighlight = getHighlight(bestPull)
+  const shouldCollapseText = isCompactMode && hasInteracted
 
   // Fan-spread variants for summary grid cards
   const fanVariants = {
@@ -194,6 +197,21 @@ export default function PackOpener() {
     const muted = saved === '1'
     setIsMuted(muted)
     sfxRef.current.setMuted(muted)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(max-width: 640px), (max-height: 760px)')
+    const updateCompactMode = () => setIsCompactMode(mediaQuery.matches)
+    updateCompactMode()
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateCompactMode)
+      return () => mediaQuery.removeEventListener('change', updateCompactMode)
+    }
+
+    mediaQuery.addListener(updateCompactMode)
+    return () => mediaQuery.removeListener(updateCompactMode)
   }, [])
 
   useEffect(() => {
@@ -313,6 +331,7 @@ export default function PackOpener() {
     const pack = buildPack()
     if (!pack) return
 
+    setHasInteracted(true)
     sfxRef.current.unlock()
     sfxRef.current.tap()
 
@@ -330,6 +349,7 @@ export default function PackOpener() {
       setView('summary')
       return
     }
+    setHasInteracted(true)
     sfxRef.current.whoosh()
     setSwipeDirection(direction)
     setIsTransitioning(true)
@@ -339,6 +359,7 @@ export default function PackOpener() {
   function startSleeveOpen() {
     if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging) return
 
+    setHasInteracted(true)
     sfxRef.current.unlock()
     sfxRef.current.tap()
     setIsSleeveCharging(true)
@@ -402,7 +423,7 @@ export default function PackOpener() {
   }
 
   return (
-    <div className="pack-opener-wrap">
+    <div className={`pack-opener-wrap ${shouldCollapseText ? 'compact-ui' : ''}`}>
       {view === 'select' && (
         <section className="flow-shell landing-shell premium-stage premium-stage-select">
           <div className="stage-spotlight stage-spotlight-left" />
@@ -416,6 +437,7 @@ export default function PackOpener() {
             <span className="landing-eyebrow">Choose your next pack</span>
             <h2 className="landing-title">Pick a set. Crack a pack.</h2>
             <p className="landing-text">Load the sleeve, swipe through six pulls, and review your best hit.</p>
+            {shouldCollapseText && <p className="landing-text compact-caption">Swipe-ready view enabled</p>}
             <button className="ghost-button sound-toggle" onClick={toggleMuted}>
               {isMuted ? 'Sound: Off' : 'Sound: On'}
             </button>
@@ -492,7 +514,7 @@ export default function PackOpener() {
             <div className="sleeve-copy">
               <span className="landing-eyebrow">Sleeve loaded</span>
               <h3>Open the sleeve to reveal your deck</h3>
-              <p>Tap the sleeve and it will peel open before the first card appears.</p>
+              {!shouldCollapseText && <p>Tap the sleeve and it will peel open before the first card appears.</p>}
             </div>
 
             <motion.button
@@ -585,7 +607,7 @@ export default function PackOpener() {
           </div>
 
           <div className="opening-stage">
-            <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>
+            {!shouldCollapseText && <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>}
             {isSpotlightMoment && currentHighlight.label && (
               <motion.div
                 className={`spotlight-pill spotlight-pill-${currentHighlight.tone}`}
@@ -653,6 +675,7 @@ export default function PackOpener() {
                   dragTransition={{ bounceStiffness: 260, bounceDamping: 20 }}
                   style={{ x: dragX, rotate: dragRotate }}
                   onDragStart={() => {
+                    setHasInteracted(true)
                     suppressClickRef.current = true
                   }}
                   onDragEnd={onCardDragEnd}
@@ -733,7 +756,7 @@ export default function PackOpener() {
           <div className="opened-cards-wrap">
             <div className="summary-heading">
               <h3>Pack Summary</h3>
-              <p>Review every card from this pack, zoom in on hits, then open another or pick a new set.</p>
+              {!shouldCollapseText && <p>Review every card from this pack, zoom in on hits, then open another or pick a new set.</p>}
             </div>
 
             {bestPull && (

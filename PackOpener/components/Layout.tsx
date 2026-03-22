@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -11,6 +11,7 @@ type Props = {
 
 export default function Layout({ children, title = 'PackOpener', description = 'PackOpener — preview and open packs' }: Props) {
   const router = useRouter()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <>
@@ -18,7 +19,7 @@ export default function Layout({ children, title = 'PackOpener', description = '
         <title>{title}</title>
         <meta name="description" content={description} />
       </Head>
-      <div className="app">
+      <div className={`app ${router.pathname === '/' ? 'app-home' : ''}`}>
         <header className="site-header">
           <Link href="/" className="brand">PackOpener</Link>
           <nav className="site-nav" aria-label="Primary navigation">
@@ -29,7 +30,38 @@ export default function Layout({ children, title = 'PackOpener', description = '
               Profile
             </Link>
           </nav>
+          <button
+            className="mobile-nav-fab"
+            aria-label={mobileMenuOpen ? 'Close quick actions' : 'Open quick actions'}
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
         </header>
+
+        <div
+          className={`mobile-drawer-backdrop ${mobileMenuOpen ? 'is-open' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden={!mobileMenuOpen}
+        />
+        <aside className={`mobile-drawer ${mobileMenuOpen ? 'is-open' : ''}`} aria-hidden={!mobileMenuOpen}>
+          <div className="mobile-drawer-title">Quick Actions</div>
+          <Link
+            href="/"
+            className={`mobile-drawer-link ${router.pathname === '/' ? 'is-active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Open Packs
+          </Link>
+          <Link
+            href="/profile"
+            className={`mobile-drawer-link ${router.pathname === '/profile' ? 'is-active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Profile
+          </Link>
+        </aside>
         <main className="site-main">{children}</main>
         <footer className="site-footer">© PackOpener</footer>
       </div>
