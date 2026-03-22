@@ -1,3 +1,5 @@
+import { getSetFamily } from './rarityLadder'
+
 type Card = {
   id: string
   name: string
@@ -57,15 +59,10 @@ function rarityToKey(r: string | undefined) {
   return 'Common'
 }
 
-function isPocketSetId(setId: string) {
-  const id = setId.trim().toUpperCase()
-  return /^(A\d+[A-Z]?|B\d+[A-Z]?|P-A)$/.test(id)
-}
-
 export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { setId?: string }) {
   const result: Card[] = []
   const setId = opts?.setId || ''
-  const isPocketSet = isPocketSetId(setId)
+  const isPocketSet = getSetFamily(setId) === 'pocket'
 
   // Get rarity weight map from packDef or use defaults
   const rarityWeightMap = packDef.rarityWeightMap || new Map([

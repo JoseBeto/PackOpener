@@ -6,6 +6,7 @@ import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import CardZoomModal from './CardZoomModal'
 import { getSfxEngine } from '../lib/sfx'
+import { getCardRankBySet, getSetFamily, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY } from '../lib/rarityLadder'
 
 type FocusCard = {
   name: string
@@ -16,51 +17,8 @@ type FocusCard = {
 type OpeningView = 'select' | 'sleeve' | 'opening' | 'summary'
 
 type HighlightTone = 'base' | 'holo' | 'ultra' | 'secret'
-
-function getCardRank(card?: Card | null) {
-  if (!card) return 0
-  const rarity = (card.rarity || '').toLowerCase()
-  const special = (card.special || '').toLowerCase()
-
-  const isPocketCrown = rarity.includes('crown')
-  const isPocketThreeStar = rarity.includes('three star')
-  const isPocketTwoStar = rarity.includes('two star')
-  const isPocketOneStar = rarity.includes('one star')
-  const isPocketTwoShiny = rarity.includes('two shiny')
-  const isPocketOneShiny = rarity.includes('one shiny')
-  const isPocketFourDiamond = rarity.includes('four diamond')
-  const isPocketThreeDiamond = rarity.includes('three diamond')
-
-  const isGoldTier =
-    special.includes('gold') ||
-    special.includes('hyper') ||
-    special.includes('secret') ||
-    rarity.includes('hyper') ||
-    rarity.includes('secret') ||
-    rarity.includes('crown') ||
-    rarity.includes('mega hyper')
-
-  if (special.includes('godpack')) return 100
-  if (isPocketCrown) return 95
-  if (isPocketThreeStar || isPocketTwoShiny) return 90
-  if (isPocketTwoStar || isPocketOneShiny) return 74
-  if (isPocketOneStar) return 82
-  if (isPocketFourDiamond) return 58
-  if (isPocketThreeDiamond) return 40
-  if (isGoldTier) return 95
-  if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
-  if (special.includes('illustration') || rarity.includes('illustration')) return 82
-  if (rarity.includes('ultra')) return 68
-  if (special.includes('doublerare') || rarity.includes('double rare')) return 58
-  if (card.isReverse) return 46
-  if (card.isHolo || rarity.includes('holo')) return 40
-  if (rarity.includes('rare')) return 30
-  if (rarity.includes('uncommon')) return 18
-  return 10
-}
-
-function getHighlight(card?: Card | null): { label: string | null; tone: HighlightTone } {
-  const rank = getCardRank(card)
+function getHighlight(card: Card | null | undefined, setId: string): { label: string | null; tone: HighlightTone } {
+  const rank = getCardRankBySet(card, setId)
   if (!card || rank < 40) return { label: null, tone: 'base' }
   if (rank >= 95) return { label: 'Secret Hit', tone: 'secret' }
   if (rank >= 82) return { label: 'Major Pull', tone: 'secret' }
@@ -120,12 +78,13 @@ export default function PackOpener() {
   const packTypeLabel = packType === 'premium' ? 'Premium Pack' : 'Standard Pack'
   const setDisplayName = setNames[setId] || setId.toUpperCase()
   const setLogo = setLogos[setId] || null
-  const currentHighlight = getHighlight(visibleCard)
+  const isPocketSet = getSetFamily(setId) === 'pocket'
+  const currentHighlight = getHighlight(visibleCard, setId)
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
-    return [...currentPack].sort((a, b) => getCardRank(b) - getCardRank(a))[0]
-  }, [currentPack])
-  const bestPullHighlight = getHighlight(bestPull)
+    return [...currentPack].sort((a, b) => getCardRankBySet(b, setId) - getCardRankBySet(a, setId))[0]
+  }, [currentPack, setId])
+  const bestPullHighlight = getHighlight(bestPull, setId)
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
 
@@ -264,7 +223,7 @@ export default function PackOpener() {
     flipTimeoutRef.current = window.setTimeout(() => {
       setIsCardFaceUp(true)
       sfxRef.current.flip()
-      const highlight = getHighlight(visibleCard)
+      const highlight = getHighlight(visibleCard, setId)
       if (highlight.label) sfxRef.current.rarity(highlight.tone)
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
@@ -563,11 +522,19 @@ export default function PackOpener() {
               <div className="selected-pack-topline">Selected pack</div>
               <div className="selected-pack-title">{packTypeLabel}</div>
               <div className="selected-pack-subtitle">{setDisplayName}</div>
+              <div className="selected-pack-system">Set Type: {isPocketSet ? 'Pokémon TCG Pocket' : 'Pokémon TCG Mainline'}</div>
 
               <div className="pack-stat-list">
-                <div className="pack-stat"><span>Normals</span><strong>1 Common + 2 Uncommon</strong></div>
-                <div className="pack-stat"><span>Hits</span><strong>Reverse + Rare + Bonus</strong></div>
+                <div className="pack-stat"><span>Base cards</span><strong>{isPocketSet ? '1◊ + 2◊' : '1 Common + 2 Uncommon'}</strong></div>
+                <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
                 <div className="pack-stat"><span>Total cards</span><strong>6 per pack</strong></div>
+              </div>
+
+              <div className="selected-pack-legend">
+                {isPocketSet
+                  ? 'Pocket tiers: 1◊/2◊ base, 3◊/4◊ core hits, 1★/2★/3★ chase, Crown top tier.'
+                  : 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers.'
+                }
               </div>
 
               <div className="selected-pack-art" aria-hidden="true">

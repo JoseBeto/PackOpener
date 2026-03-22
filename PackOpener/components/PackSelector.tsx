@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { getSetFamily } from '../lib/rarityLadder'
 
 type SetItem = { id: string; name: string; releaseDate?: string }
 
@@ -29,10 +30,7 @@ function sortSetsNewestFirst(sets: SetItem[]): SetItem[] {
   })
 }
 
-function isPocketSetId(setId: string) {
-  const id = setId.trim().toUpperCase()
-  return /^(A\d+[A-Z]?|B\d+[A-Z]?|P-A)$/.test(id)
-}
+type SetFamily = 'mainline' | 'pocket'
 
 type Props = {
   setId: string
@@ -44,7 +42,24 @@ type Props = {
 export default function PackSelector({ setId, onSetIdChange, packType, onPackTypeChange }: Props) {
   const [sets, setSets] = useState<SetItem[]>([])
   const [loading, setLoading] = useState(false)
-  const isPocketSet = isPocketSetId(setId)
+  const [setFamily, setSetFamily] = useState<SetFamily>(getSetFamily(setId) === 'pocket' ? 'pocket' : 'mainline')
+
+  const filteredSets = sets.filter((set) => (setFamily === 'pocket' ? getSetFamily(set.id) === 'pocket' : getSetFamily(set.id) === 'mainline'))
+
+  useEffect(() => {
+    const nextFamily: SetFamily = getSetFamily(setId) === 'pocket' ? 'pocket' : 'mainline'
+    setSetFamily(nextFamily)
+  }, [setId])
+
+  function handleFamilyChange(nextFamily: SetFamily) {
+    setSetFamily(nextFamily)
+    if (!sets.length) return
+    const nextSets = sets.filter((set) => (nextFamily === 'pocket' ? getSetFamily(set.id) === 'pocket' : getSetFamily(set.id) === 'mainline'))
+    if (!nextSets.length) return
+    if (!nextSets.some((set) => set.id === setId)) {
+      onSetIdChange(nextSets[0].id)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -92,14 +107,35 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
 
   return (
     <>
+      <div className="set-family-switch" role="tablist" aria-label="Set family">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={setFamily === 'mainline'}
+          className={`set-family-btn ${setFamily === 'mainline' ? 'is-active' : ''}`}
+          onClick={() => handleFamilyChange('mainline')}
+        >
+          Regular Sets
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={setFamily === 'pocket'}
+          className={`set-family-btn ${setFamily === 'pocket' ? 'is-active' : ''}`}
+          onClick={() => handleFamilyChange('pocket')}
+        >
+          Pocket Sets
+        </button>
+      </div>
+
       <div className="control-row">
         <label className="field-label">
           <span className="field-title">Set</span>
           {loading ? (
             <div className="field-loading">Loading sets…</div>
-          ) : sets.length > 0 ? (
+          ) : filteredSets.length > 0 ? (
             <select value={setId} onChange={(e) => onSetIdChange(e.target.value)} className="field-input">
-              {sets.map((s) => (
+              {filteredSets.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} — {s.id}</option>
               ))}
             </select>
@@ -115,20 +151,6 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
             <option value="premium">Premium</option>
           </select>
         </label>
-      </div>
-
-      <div className="rarity-system-panel" role="note" aria-live="polite">
-        <div className="rarity-system-head">
-          <span className="rarity-system-label">Set Type</span>
-          <strong className="rarity-system-value">{isPocketSet ? 'Pokémon TCG Pocket' : 'Pokémon TCG Mainline'}</strong>
-        </div>
-        <div className="rarity-system-legend">
-          {isPocketSet ? (
-            <span>Rarity tiers: 1◊/2◊ (base), 3◊, 4◊, 1★, 2★/Shiny, 3★, Crown</span>
-          ) : (
-            <span>Rarity tiers: Holo, Double Rare, Illustration Rare, Ultra Rare, Special Illustration Rare, Gold</span>
-          )}
-        </div>
       </div>
     </>
   )
