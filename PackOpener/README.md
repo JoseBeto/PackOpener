@@ -40,7 +40,7 @@ Weights and templates are configured in `data/packs.json` via the
 `rarityDistribution` model for older eras.
 
 The simulator lives in `lib/simulator.ts` and exposes `simulatePack()` which is
-called from `components/PackOpener.tsx`.
+called from the main Rip Realm opening UI component.
 
 This slot‑based approach ensures exactly one rare‑slot per pack and brings
 ultra‑tier pull rates closer to real‑world values (1 in ~15–20 packs instead of

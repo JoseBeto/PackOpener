@@ -3,7 +3,7 @@ import path from 'path'
 
 const BUNDLED_CACHE_DIR = path.join(process.cwd(), 'data', 'cache')
 const RUNTIME_CACHE_DIR = process.env.VERCEL
-  ? path.join('/tmp', 'packopener-cache')
+  ? path.join('/tmp', 'riprealm-cache')
   : BUNDLED_CACHE_DIR
 
 function canWriteRuntimeCache() {

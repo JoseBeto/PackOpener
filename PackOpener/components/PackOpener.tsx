@@ -66,7 +66,7 @@ function getHighlight(card: Card | null | undefined, setId: string): { label: st
   return { label: 'Holo Hit', tone: 'holo' }
 }
 
-export default function PackOpener() {
+export default function RipRealmApp() {
   const [setId, setSetId] = useState('sv10')
   const [packType, setPackType] = useState('standard')
   const [loading, setLoading] = useState(false)
@@ -227,7 +227,7 @@ export default function PackOpener() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const saved = window.localStorage.getItem('packopener-sound-muted')
+    const saved = window.localStorage.getItem('riprealm-sound-muted') ?? window.localStorage.getItem('packopener-sound-muted')
     const muted = saved === '1'
     setIsMuted(muted)
     sfxRef.current.setMuted(muted)
@@ -481,7 +481,7 @@ export default function PackOpener() {
     const next = !isMuted
     setIsMuted(next)
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('packopener-sound-muted', next ? '1' : '0')
+      window.localStorage.setItem('riprealm-sound-muted', next ? '1' : '0')
     }
     if (!next) {
       sfxRef.current.unlock()
@@ -533,7 +533,7 @@ export default function PackOpener() {
           </div>
           <div className="landing-copy">
             <span className="landing-eyebrow">Choose your next pack</span>
-            <h2 className="landing-title">Pick a set. Crack a pack.</h2>
+            <h2 className="landing-title">Rip. Reveal. Repeat.</h2>
             <p className="landing-text">Load the sleeve, swipe through six pulls, and review your best hit.</p>
             {shouldCollapseText && <p className="landing-text compact-caption">Swipe-ready view enabled</p>}
             <button className="ghost-button sound-toggle" onClick={toggleMuted}>
