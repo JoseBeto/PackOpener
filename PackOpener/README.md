@@ -1,6 +1,6 @@
-# PackOpener — Next.js TypeScript PWA scaffold
+# Rip Realm — Next.js TypeScript PWA scaffold
 
-Minimal starter for the PackOpener website. Includes:
+Minimal starter for the Rip Realm website. Includes:
 
 - Next.js + TypeScript
 - PWA support via `next-pwa`

@@ -181,7 +181,8 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
       // an Energy reverse holo, or an assigned pattern reverse holo.
       // Exact per-card pattern metadata is not in our source data, so the assigned pattern is
       // deterministically simulated from the card id to keep the same card visually consistent.
-      if (Math.random() < 0.5) {
+      // Tune: make pattern reverses feel noticeably common in openings.
+      if (Math.random() < 0.25) {
         card.special = 'ReverseEnergyType'
       } else {
         card.special = getAssignedAscendedHeroesPattern(card)

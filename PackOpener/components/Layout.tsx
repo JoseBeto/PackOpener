@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -9,9 +9,8 @@ type Props = {
   description?: string
 }
 
-export default function Layout({ children, title = 'PackOpener', description = 'PackOpener — preview and open packs' }: Props) {
+export default function Layout({ children, title = 'Rip Realm', description = 'Rip Realm — Rip. Reveal. Repeat.' }: Props) {
   const router = useRouter()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <>
@@ -21,7 +20,7 @@ export default function Layout({ children, title = 'PackOpener', description = '
       </Head>
       <div className={`app ${router.pathname === '/' ? 'app-home' : ''}`}>
         <header className="site-header">
-          <Link href="/" className="brand">PackOpener</Link>
+          <Link href="/" className="brand">Rip Realm</Link>
           <nav className="site-nav" aria-label="Primary navigation">
             <Link href="/" className={`nav-link ${router.pathname === '/' ? 'is-active' : ''}`}>
               Open Packs
@@ -30,40 +29,12 @@ export default function Layout({ children, title = 'PackOpener', description = '
               Profile
             </Link>
           </nav>
-          <button
-            className="mobile-nav-fab"
-            aria-label={mobileMenuOpen ? 'Close quick actions' : 'Open quick actions'}
-            aria-expanded={mobileMenuOpen}
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-          >
-            {mobileMenuOpen ? '✕' : '☰'}
-          </button>
-        </header>
-
-        <div
-          className={`mobile-drawer-backdrop ${mobileMenuOpen ? 'is-open' : ''}`}
-          onClick={() => setMobileMenuOpen(false)}
-          aria-hidden={!mobileMenuOpen}
-        />
-        <aside className={`mobile-drawer ${mobileMenuOpen ? 'is-open' : ''}`} aria-hidden={!mobileMenuOpen}>
-          <div className="mobile-drawer-title">Quick Actions</div>
-          <Link
-            href="/"
-            className={`mobile-drawer-link ${router.pathname === '/' ? 'is-active' : ''}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            Open Packs
-          </Link>
-          <Link
-            href="/profile"
-            className={`mobile-drawer-link ${router.pathname === '/profile' ? 'is-active' : ''}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
+          <Link href="/profile" className={`mobile-profile-btn ${router.pathname === '/profile' ? 'is-active' : ''}`} aria-label="Open profile">
             Profile
           </Link>
-        </aside>
+        </header>
         <main className="site-main">{children}</main>
-        <footer className="site-footer">© PackOpener</footer>
+        <footer className="site-footer">© Rip Realm</footer>
       </div>
     </>
   )

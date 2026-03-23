@@ -5,7 +5,7 @@ const PackOpener = dynamic(() => import('../components/PackOpener'), { ssr: fals
 
 export default function Home() {
   return (
-    <Layout title="PackOpener | Open Packs" description="Open Pokémon packs and track your best pulls in your profile showcase.">
+    <Layout title="Rip Realm | Open Packs" description="Rip Realm — Rip. Reveal. Repeat. Open Pokémon packs and track your best pulls.">
       <section className="packopener-page">
         <div className="packopener-host">
           <PackOpener />

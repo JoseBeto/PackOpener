@@ -96,7 +96,7 @@ export default function ProfilePage() {
   }, [pulls, setsMap])
 
   return (
-    <Layout title="PackOpener | Profile" description="View your showcase pulls by set, ordered by rarity.">
+    <Layout title="Rip Realm | Profile" description="Rip Realm profile — view your showcase pulls by set, ordered by rarity.">
       <section className="profile-wrap">
         <h1 className="profile-title">Profile</h1>
         <p className="profile-subtitle">Showcase includes only pulls above Double Rare, grouped by set and ordered by rarity.</p>

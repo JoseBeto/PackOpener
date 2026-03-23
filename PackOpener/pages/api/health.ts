@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000)
     
-    const headers: Record<string, string> = { 'User-Agent': 'PackOpener/1.0' }
+    const headers: Record<string, string> = { 'User-Agent': 'RipRealm/1.0' }
     
     console.log('[Health] Attempting to reach tcgdex.net...')
     const startTime = Date.now()
