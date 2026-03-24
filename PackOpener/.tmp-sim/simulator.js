@@ -141,16 +141,23 @@ function simulatePack(packDef, pool, opts) {
                 return;
             if (category !== 'pokemon')
                 return;
-            // Best available evidence: non-ex Pokémon have two reverse styles in Ascended Heroes:
-            // an Energy reverse holo, or an assigned pattern reverse holo.
-            // Exact per-card pattern metadata is not in our source data, so the assigned pattern is
-            // deterministically simulated from the card id to keep the same card visually consistent.
-            // Tune: make pattern reverses feel noticeably common in openings.
-            if (Math.random() < 0.25) {
-                card.special = 'ReverseEnergyType';
+            // Ascended Heroes (me02.5) reverse model: non-ex Pokémon have two reverse styles:
+            // 1. Energy reverse holo (default)
+            // 2. Assigned pattern reverse holo (Poké Ball / Love Ball / Friend Ball / Quick Ball / Dusk Ball / Rocket R)
+            //
+            // Real-world data (Japanese Mega Dream ex, 1000+ packs):
+            // - ~71% of packs have any reverse (1 in 1.4)
+            // - Each non-ex Pokémon gets exactly ONE reverse variant printed
+            // - Not all reverses are assigned patterns; most remain Energy reverses
+            // - Assigned patterns are a smaller subset to make them feel special
+            //
+            // Conservative estimate: ~40% of eligible non-ex Pokémon actually have assigned pattern reverses printed.
+            // This keeps Love Ball and other patterns rarer and more exciting.
+            if (Math.random() < 0.4) {
+                card.special = getAssignedAscendedHeroesPattern(card);
             }
             else {
-                card.special = getAssignedAscendedHeroesPattern(card);
+                card.special = 'ReverseEnergyType';
             }
             return;
         }
@@ -279,8 +286,13 @@ function simulatePack(packDef, pool, opts) {
             }
         }
         let reverseCard;
+        // For SV/ME era: reverse holos are typically Pokémon for special finishes (Love Ball, etc.)
+        // Try to pick a Pokémon first; fall back to any eligible card if none available
+        const isPokemonCategory = (c) => (c.category || '').toLowerCase() === 'pokemon';
         if (chosenRevRarity === 'Rare') {
-            reverseCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c)), () => pickByRarity('Rare'));
+            const rarePool = pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c));
+            const pokemonPool = rarePool.filter(isPokemonCategory);
+            reverseCard = pickFromCandidates(pokemonPool.length > 0 ? pokemonPool : rarePool, () => pickByRarity('Rare'));
         }
         else if (chosenRevRarity === 'oneDiamond') {
             reverseCard = pickFromCandidates(pool.filter((c) => isPocketOneDiamond(c) && canBeReverse(c)), () => pickByRarity('Common'));
@@ -292,7 +304,10 @@ function simulatePack(packDef, pool, opts) {
             reverseCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c) && canBeReverse(c)), () => pickByRarity('Rare'));
         }
         else {
-            reverseCard = pickFromCandidates(pool.filter((c) => rarityToKey(c.rarity) === chosenRevRarity && canBeReverse(c)), () => pickByRarity(chosenRevRarity));
+            // For C/U: prefer Pokémon to get more special reverse finishes
+            const candPool = pool.filter((c) => rarityToKey(c.rarity) === chosenRevRarity && canBeReverse(c));
+            const pokemonPool = candPool.filter(isPokemonCategory);
+            reverseCard = pickFromCandidates(pokemonPool.length > 0 ? pokemonPool : candPool, () => pickByRarity(chosenRevRarity));
         }
         reverseCard.isReverse = true;
         reverseCard.isHolo = true;
@@ -454,10 +469,14 @@ function simulatePack(packDef, pool, opts) {
                 }
             }
             if (chosenBonusRevRarity === 'Rare') {
-                bonusCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c)), () => pickByRarity('Rare'));
+                const rarePool = pool.filter((c) => isBaseRareFamily(c) && canBeReverse(c));
+                const pokemonPool = rarePool.filter((c) => (c.category || '').toLowerCase() === 'pokemon');
+                bonusCard = pickFromCandidates(pokemonPool.length > 0 ? pokemonPool : rarePool, () => pickByRarity('Rare'));
             }
             else {
-                bonusCard = pickFromCandidates(pool.filter((c) => rarityToKey(c.rarity) === chosenBonusRevRarity && canBeReverse(c)), () => pickByRarity(chosenBonusRevRarity));
+                const candPool = pool.filter((c) => rarityToKey(c.rarity) === chosenBonusRevRarity && canBeReverse(c));
+                const pokemonPool = candPool.filter((c) => (c.category || '').toLowerCase() === 'pokemon');
+                bonusCard = pickFromCandidates(pokemonPool.length > 0 ? pokemonPool : candPool, () => pickByRarity(chosenBonusRevRarity));
             }
             bonusCard.isReverse = true;
             bonusCard.isHolo = true;

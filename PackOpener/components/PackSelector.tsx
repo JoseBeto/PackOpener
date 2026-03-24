@@ -4,6 +4,7 @@ import { getSetFamily } from '../lib/rarityLadder'
 type SetItem = { id: string; name: string; releaseDate?: string }
 
 const SETS_CACHE_KEY = 'po_sets_v2'
+const LAST_SELECTED_SET_KEY = 'po_lastSelectedSet'
 
 function parseReleaseDate(value?: string): number {
   if (!value) return Number.NEGATIVE_INFINITY
@@ -134,7 +135,16 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
           {loading ? (
             <div className="field-loading">Loading sets…</div>
           ) : filteredSets.length > 0 ? (
-            <select value={setId} onChange={(e) => onSetIdChange(e.target.value)} className="field-input">
+            <select 
+              value={setId} 
+              onChange={(e) => {
+                onSetIdChange(e.target.value)
+                try {
+                  localStorage.setItem(LAST_SELECTED_SET_KEY, e.target.value)
+                } catch (e) {}
+              }} 
+              className="field-input"
+            >
               {filteredSets.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} — {s.id}</option>
               ))}

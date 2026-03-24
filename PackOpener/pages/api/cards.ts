@@ -26,12 +26,50 @@ function loadDetailedCardsDB() {
 // Build a map of card ID to rarity
 function getRarityMap() {
   const db = loadDetailedCardsDB()
-  if (!db?.cards) return new Map()
+  const list = Array.isArray(db)
+    ? db
+    : Array.isArray(db?.cards)
+      ? db.cards
+      : (db && typeof db === 'object'
+          ? Object.values(db).filter(Array.isArray).flat()
+          : [])
+
+  if (!list.length) return new Map()
   const map = new Map()
-  db.cards.forEach((card: any) => {
+  list.forEach((card: any) => {
     map.set(card.id, card.rarity || 'Common')
   })
   return map
+}
+
+function getCardCategoryMap() {
+  const db = loadDetailedCardsDB()
+  const list = Array.isArray(db)
+    ? db
+    : Array.isArray(db?.cards)
+      ? db.cards
+      : (db && typeof db === 'object'
+          ? Object.values(db).filter(Array.isArray).flat()
+          : [])
+
+  if (!list.length) return new Map()
+  const map = new Map()
+  list.forEach((card: any) => {
+    if (!card?.id) return
+    map.set(card.id, card.category || '')
+  })
+  return map
+}
+
+function enrichCardsForRuntime(cards: any[]) {
+  const rarityMap = getRarityMap()
+  const categoryMap = getCardCategoryMap()
+
+  return (cards || []).map((card: any) => ({
+    ...card,
+    rarity: card?.rarity || rarityMap.get(card?.id) || 'Common',
+    category: card?.category || categoryMap.get(card?.id) || '',
+  }))
 }
 
 // Create an HTTPS request helper that bypasses certificate verification
@@ -80,15 +118,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Check in-memory cache first
   if (cardMemCache[set] && Date.now() - cardMemCache[set].ts < CACHE_TTL) {
     console.log(`[Cards] Returning cached cards for set ${set} from memory`)
-    return res.status(200).json({ count: cardMemCache[set].cards.length, cards: cardMemCache[set].cards, cached: true, source: 'memory-cache' })
+    const enrichedCards = enrichCardsForRuntime(cardMemCache[set].cards)
+    cardMemCache[set] = { ts: cardMemCache[set].ts, cards: enrichedCards }
+    return res.status(200).json({ count: enrichedCards.length, cards: enrichedCards, cached: true, source: 'memory-cache' })
   }
 
   // Check file cache second
   const fileCache = getCardsFromCache(set)
   if (fileCache && fileCache.length > 0) {
     console.log(`[Cards] Loaded ${fileCache.length} cards for ${set} from file cache`)
-    cardMemCache[set] = { ts: Date.now(), cards: fileCache }
-    return res.status(200).json({ count: fileCache.length, cards: fileCache, cached: true, source: 'file-cache' })
+    const enrichedCards = enrichCardsForRuntime(fileCache)
+    cardMemCache[set] = { ts: Date.now(), cards: enrichedCards }
+    return res.status(200).json({ count: enrichedCards.length, cards: enrichedCards, cached: true, source: 'file-cache' })
   }
 
   try {
@@ -104,6 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Map tcgdex format to our format, enriched with rarity from detailed database
     const rarityMap = getRarityMap()
+    const categoryMap = getCardCategoryMap()
     const cards = (data.cards || []).map((c: any) => {
       // tcgdex image URLs need format appended: {baseUrl}/low.png or /high.png
       let smallImage = PLACEHOLDER_CARD
@@ -127,6 +169,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           large: largeImage
         },
         rarity,
+        category: c.category || categoryMap.get(c.id) || '',
         variants: c.variants || {},
         setId: set,
         number: c.localId

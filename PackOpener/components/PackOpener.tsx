@@ -90,6 +90,8 @@ export default function RipRealmApp() {
   const [isMuted, setIsMuted] = useState(false)
   const [isCompactMode, setIsCompactMode] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
+  const [showRevealHint, setShowRevealHint] = useState(false)
+  const [hintActivityTick, setHintActivityTick] = useState(0)
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveChargeTimeoutRef = useRef<number | null>(null)
@@ -98,6 +100,7 @@ export default function RipRealmApp() {
   const sleeveOpenTimeoutRef = useRef<number | null>(null)
   const flipTimeoutRef = useRef<number | null>(null)
   const spotlightTimeoutRef = useRef<number | null>(null)
+  const revealHintTimeoutRef = useRef<number | null>(null)
   const sfxRef = useRef(getSfxEngine())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
@@ -161,6 +164,20 @@ export default function RipRealmApp() {
   useEffect(() => {
     loadPool()
   }, [setId])
+
+  useEffect(() => {
+    // Restore last-selected set from localStorage on mount
+    if (typeof window !== 'undefined') {
+      try {
+        const lastSelected = localStorage.getItem('po_lastSelectedSet')
+        if (lastSelected) {
+          setSetId(lastSelected)
+        }
+      } catch (e) {
+        // ignore localStorage errors
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -291,6 +308,30 @@ export default function RipRealmApp() {
     dragX.set(0)
   }, [dragX, revealIndex, view])
 
+  useEffect(() => {
+    if (revealHintTimeoutRef.current) {
+      window.clearTimeout(revealHintTimeoutRef.current)
+      revealHintTimeoutRef.current = null
+    }
+
+    if (view !== 'opening' || !hasActiveOpening || !isCardFaceUp || isTransitioning || remainingCards <= 0) {
+      setShowRevealHint(false)
+      return
+    }
+
+    revealHintTimeoutRef.current = window.setTimeout(() => {
+      setShowRevealHint(true)
+      revealHintTimeoutRef.current = null
+    }, 3000)
+
+    return () => {
+      if (revealHintTimeoutRef.current) {
+        window.clearTimeout(revealHintTimeoutRef.current)
+        revealHintTimeoutRef.current = null
+      }
+    }
+  }, [view, hasActiveOpening, isCardFaceUp, isTransitioning, remainingCards, revealIndex, hintActivityTick])
+
   async function loadPool() {
     setLoading(true)
     setError('')
@@ -374,6 +415,10 @@ export default function RipRealmApp() {
       window.clearTimeout(spotlightTimeoutRef.current)
       spotlightTimeoutRef.current = null
     }
+    if (revealHintTimeoutRef.current) {
+      window.clearTimeout(revealHintTimeoutRef.current)
+      revealHintTimeoutRef.current = null
+    }
     setCurrentPack([])
     setRevealIndex(0)
     setView(nextView)
@@ -382,8 +427,14 @@ export default function RipRealmApp() {
     setIsSleeveOpening(false)
     setIsCardFaceUp(false)
     setIsSpotlightMoment(false)
+    setShowRevealHint(false)
     setIsTransitioning(false)
     setSwipeDirection(1)
+  }
+
+  function markRevealInteraction() {
+    setShowRevealHint(false)
+    setHintActivityTick((prev) => prev + 1)
   }
 
   function buildPack() {
@@ -413,6 +464,7 @@ export default function RipRealmApp() {
 
     setCurrentPack(pack)
     setRevealIndex(0)
+    setShowRevealHint(false)
     setView('sleeve')
     setIsSleeveOpening(false)
     setIsTransitioning(false)
@@ -421,6 +473,7 @@ export default function RipRealmApp() {
 
   function revealNext(direction: 1 | -1 = 1) {
     if (view !== 'opening' || currentPack.length === 0 || isTransitioning || isSpotlightMoment) return
+    markRevealInteraction()
     if (revealIndex >= currentPack.length - 1) {
       setView('summary')
       return
@@ -490,6 +543,7 @@ export default function RipRealmApp() {
   }
 
   function onCardDragEnd(_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) {
+    markRevealInteraction()
     const absOffsetX = Math.abs(info.offset.x)
     const absVelocityX = Math.abs(info.velocity.x)
     const shouldReveal = absOffsetX > 70 || absVelocityX > 480
@@ -771,6 +825,7 @@ export default function RipRealmApp() {
                   suppressClickRef.current = false
                   return
                 }
+                markRevealInteraction()
                 revealNext(1)
               }}
               aria-label={`Reveal next card. ${remainingCards} card${remainingCards === 1 ? '' : 's'} left after this.`}
@@ -811,6 +866,7 @@ export default function RipRealmApp() {
                   style={{ x: dragX, rotate: dragRotate }}
                   onDragStart={() => {
                     setHasInteracted(true)
+                    markRevealInteraction()
                     suppressClickRef.current = true
                   }}
                   onDragEnd={onCardDragEnd}
@@ -883,6 +939,9 @@ export default function RipRealmApp() {
                 {visibleCard.isHolo ? ' • Holo' : ''}
                 {visibleCard.special ? ` • ${specialLabel(visibleCard.special)}` : ''}
               </div>
+              {showRevealHint && remainingCards > 0 && (
+                <div className="reveal-helper">Swipe or tap the card to reveal the next one.</div>
+              )}
             </div>
           </div>
         </section>
