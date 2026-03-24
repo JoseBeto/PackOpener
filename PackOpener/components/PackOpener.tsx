@@ -21,6 +21,20 @@ type FocusCard = {
 
 type OpeningView = 'select' | 'sleeve' | 'opening' | 'summary'
 
+function parseReleaseDate(value?: string): number {
+  if (!value) return Number.NEGATIVE_INFINITY
+  const normalized = value.trim().replace(/\//g, '-')
+  const timestamp = Date.parse(normalized)
+  if (!Number.isNaN(timestamp)) return timestamp
+
+  const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (match) {
+    return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  }
+
+  return Number.NEGATIVE_INFINITY
+}
+
 function specialBadge(special?: string): { text: string; cls: string } | null {
   if (!special) return null
   if (special === 'ReverseMasterBall') return { text: 'Master Ball', cls: 'card-badge-masterball' }
@@ -119,6 +133,8 @@ export default function RipRealmApp() {
   const flipTimeoutRef = useRef<number | null>(null)
   const spotlightTimeoutRef = useRef<number | null>(null)
   const revealHintTimeoutRef = useRef<number | null>(null)
+  const poolRequestSeqRef = useRef(0)
+  const poolAbortRef = useRef<AbortController | null>(null)
   const sfxRef = useRef(getSfxEngine())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
@@ -180,20 +196,48 @@ export default function RipRealmApp() {
 
   // auto-load cards when set changes
   useEffect(() => {
-    loadPool()
+    loadPool(setId)
   }, [setId])
 
   useEffect(() => {
-    // Restore last-selected set from localStorage on mount
-    if (typeof window !== 'undefined') {
+    return () => {
+      poolAbortRef.current?.abort()
+    }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function resolveDefaultMainlineSet() {
       try {
-        const lastSelected = localStorage.getItem('po_lastSelectedSet')
-        if (lastSelected) {
-          setSetId(lastSelected)
+        const res = await fetch('/api/sets')
+        const data = await res.json()
+        if (!mounted || !Array.isArray(data?.sets)) return
+
+        const latestMainline = [...data.sets]
+          .filter((item: { id?: string }) => typeof item?.id === 'string' && getSetFamily(item.id) === 'mainline')
+          .sort((a: { id: string; name?: string; releaseDate?: string }, b: { id: string; name?: string; releaseDate?: string }) => {
+            const aTs = parseReleaseDate(a.releaseDate)
+            const bTs = parseReleaseDate(b.releaseDate)
+            if (aTs !== bTs) return bTs - aTs
+            const aName = a.name || ''
+            const bName = b.name || ''
+            const nameCompare = aName.localeCompare(bName)
+            if (nameCompare !== 0) return nameCompare
+            return a.id.localeCompare(b.id)
+          })[0]
+
+        if (latestMainline?.id) {
+          setSetId(latestMainline.id)
         }
-      } catch (e) {
-        // ignore localStorage errors
+      } catch {
+        // keep existing fallback default if set list cannot be loaded
       }
+    }
+
+    resolveDefaultMainlineSet()
+    return () => {
+      mounted = false
     }
   }, [])
 
@@ -374,13 +418,20 @@ export default function RipRealmApp() {
     }
   }, [view, hasActiveOpening, isCardFaceUp, isTransitioning, remainingCards, revealIndex, hintActivityTick])
 
-  async function loadPool() {
+  async function loadPool(targetSetId: string) {
+    const requestId = ++poolRequestSeqRef.current
+    poolAbortRef.current?.abort()
+    const controller = new AbortController()
+    poolAbortRef.current = controller
+
     setLoading(true)
     setError('')
     setDataSource('')
     try {
-      const res = await fetch(`/api/cards?set=${encodeURIComponent(setId)}`)
+      const res = await fetch(`/api/cards?set=${encodeURIComponent(targetSetId)}`, { signal: controller.signal })
       const data = await res.json()
+
+      if (requestId !== poolRequestSeqRef.current || controller.signal.aborted) return
       
       if (!res.ok) {
         setError(data.message || 'Failed to load cards')
@@ -393,11 +444,16 @@ export default function RipRealmApp() {
       setDataSource(data.source || '')
       if (data.note) console.log(data.note)
     } catch (e: any) {
+      if (controller.signal.aborted) return
+
+      if (requestId !== poolRequestSeqRef.current) return
       setError('Network error: Unable to reach card API')
       setPool([])
       setDataSource('')
     } finally {
-      setLoading(false)
+      if (requestId === poolRequestSeqRef.current && !controller.signal.aborted) {
+        setLoading(false)
+      }
     }
   }
 
