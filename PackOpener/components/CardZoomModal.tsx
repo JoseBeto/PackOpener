@@ -5,6 +5,11 @@ type Props = {
   imageSrc?: string
   title: string
   subtitle?: string
+  isHolo?: boolean
+  isReverse?: boolean
+  overlayClass?: string | null
+  specialBadgeText?: string | null
+  specialBadgeClass?: string | null
   onClose: () => void
 }
 
@@ -12,7 +17,18 @@ const MIN_ZOOM = 1
 const MAX_ZOOM = 3
 const STEP = 0.2
 
-export default function CardZoomModal({ open, imageSrc, title, subtitle, onClose }: Props) {
+export default function CardZoomModal({
+  open,
+  imageSrc,
+  title,
+  subtitle,
+  isHolo,
+  isReverse,
+  overlayClass,
+  specialBadgeText,
+  specialBadgeClass,
+  onClose,
+}: Props) {
   const [zoom, setZoom] = useState(1)
 
   useEffect(() => {
@@ -67,7 +83,19 @@ export default function CardZoomModal({ open, imageSrc, title, subtitle, onClose
 
         <div className="zoom-view" onWheel={onWheelZoom}>
           {imageSrc ? (
-            <img src={imageSrc} alt={title} className="zoom-image" style={{ transform: `scale(${zoom})` }} />
+            <div className="zoom-card-shell" style={{ transform: `scale(${zoom})` }}>
+              <img src={imageSrc} alt={title} className="zoom-image" />
+              {isHolo ? (
+                <>
+                  <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                  <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                </>
+              ) : null}
+              {isReverse ? <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} /> : null}
+              {overlayClass ? <div className={overlayClass} /> : null}
+              {isReverse ? <div className="card-badge card-badge-right">Reverse</div> : null}
+              {specialBadgeText && specialBadgeClass ? <div className={`card-badge ${specialBadgeClass}`}>{specialBadgeText}</div> : null}
+            </div>
           ) : (
             <div className="zoom-no-image">No image available</div>
           )}

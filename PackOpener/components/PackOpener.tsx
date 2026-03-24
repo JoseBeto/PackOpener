@@ -12,6 +12,11 @@ type FocusCard = {
   name: string
   image?: string
   subtitle?: string
+  isHolo?: boolean
+  isReverse?: boolean
+  overlayClass?: string | null
+  specialBadgeText?: string | null
+  specialBadgeClass?: string | null
 }
 
 type OpeningView = 'select' | 'sleeve' | 'opening' | 'summary'
@@ -42,16 +47,29 @@ function specialLabel(special?: string): string {
   return special
 }
 
-function specialOverlayClass(special?: string): string | null {
+function isPatternBallOverlaySet(setId: string): boolean {
+  const id = (setId || '').trim().toLowerCase()
+  return id === 'sv10.5b' || id === 'sv10.5w'
+}
+
+function normalizeEnergyType(type?: string): string {
+  const value = (type || '').trim().toLowerCase()
+  if (!value) return 'generic'
+  if (value === 'electric') return 'lightning'
+  return value
+}
+
+function specialOverlayClass(special: string | undefined, setId: string, card?: { types?: string[] } | null): string | null {
+  const usePatternOverlay = isPatternBallOverlaySet(setId)
   if (!special) return null
-  if (special === 'ReversePokeBall') return 'pokeball-foil-overlay'
-  if (special === 'ReverseMasterBall') return 'masterball-foil-overlay'
-  if (special === 'ReverseLoveBall') return 'loveball-foil-overlay'
-  if (special === 'ReverseFriendBall') return 'friendball-foil-overlay'
-  if (special === 'ReverseQuickBall') return 'quickball-foil-overlay'
-  if (special === 'ReverseDuskBall') return 'duskball-foil-overlay'
+  if (special === 'ReversePokeBall') return usePatternOverlay ? 'pokeball-foil-overlay' : 'pokeball-foil-overlay-single'
+  if (special === 'ReverseMasterBall') return usePatternOverlay ? 'masterball-foil-overlay' : 'masterball-foil-overlay-single'
+  if (special === 'ReverseLoveBall') return usePatternOverlay ? 'loveball-foil-overlay' : 'loveball-foil-overlay-single'
+  if (special === 'ReverseFriendBall') return usePatternOverlay ? 'friendball-foil-overlay' : 'friendball-foil-overlay-single'
+  if (special === 'ReverseQuickBall') return usePatternOverlay ? 'quickball-foil-overlay' : 'quickball-foil-overlay-single'
+  if (special === 'ReverseDuskBall') return usePatternOverlay ? 'duskball-foil-overlay' : 'duskball-foil-overlay-single'
   if (special === 'ReverseRocketR') return 'rocketr-foil-overlay'
-  if (special === 'ReverseEnergyType') return 'energytype-foil-overlay'
+  if (special === 'ReverseEnergyType') return `energytype-foil-overlay-${normalizeEnergyType(card?.types?.[0])}`
   return null
 }
 
@@ -248,6 +266,30 @@ export default function RipRealmApp() {
     const muted = saved === '1'
     setIsMuted(muted)
     sfxRef.current.setMuted(muted)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    if (!isLocalhost) return
+
+    async function clearLocalhostServiceWorkerCaches() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations()
+          await Promise.all(registrations.map((registration) => registration.unregister()))
+        }
+
+        if ('caches' in window) {
+          const cacheKeys = await caches.keys()
+          await Promise.all(cacheKeys.map((key) => caches.delete(key)))
+        }
+      } catch {
+        // ignore cleanup issues in local/dev browsers
+      }
+    }
+
+    clearLocalhostServiceWorkerCaches()
   }, [])
 
   useEffect(() => {
@@ -913,8 +955,8 @@ export default function RipRealmApp() {
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                         )}
-                        {specialOverlayClass(visibleCard.special) && (
-                          <div className={specialOverlayClass(visibleCard.special)!} />
+                        {specialOverlayClass(visibleCard.special, setId, visibleCard) && (
+                          <div className={specialOverlayClass(visibleCard.special, setId, visibleCard)!} />
                         )}
                         {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
                           <div className="card-badge card-badge-right">Reverse</div>
@@ -974,6 +1016,11 @@ export default function RipRealmApp() {
                       name: bestPull.name,
                       image: bestPull.images?.large || bestPull.images?.small,
                       subtitle: `${bestPull.rarity || 'Common'}${bestPull.isReverse ? ' • Reverse' : ''}${bestPull.isHolo ? ' • Holo' : ''}${bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}`,
+                      isHolo: Boolean(bestPull.isHolo || (bestPull as any).variants?.holo),
+                      isReverse: Boolean(bestPull.isReverse || (bestPull as any).variants?.reverse),
+                      overlayClass: specialOverlayClass(bestPull.special, setId, bestPull),
+                      specialBadgeText: specialBadge(bestPull.special)?.text || null,
+                      specialBadgeClass: specialBadge(bestPull.special)?.cls || null,
                     })
                   }
                 >
@@ -1013,6 +1060,11 @@ export default function RipRealmApp() {
                       name: c.name,
                       image: c.images?.large || c.images?.small,
                       subtitle: `${c.rarity || 'Common'}${c.isReverse ? ' • Reverse' : ''}${c.isHolo ? ' • Holo' : ''}${c.special ? ` • ${specialLabel(c.special)}` : ''}`,
+                      isHolo: Boolean(c.isHolo || (c as any).variants?.holo),
+                      isReverse: Boolean(c.isReverse || (c as any).variants?.reverse),
+                      overlayClass: specialOverlayClass(c.special, setId, c),
+                      specialBadgeText: specialBadge(c.special)?.text || null,
+                      specialBadgeClass: specialBadge(c.special)?.cls || null,
                     })
                   }
                 >
@@ -1043,7 +1095,7 @@ export default function RipRealmApp() {
                     {(c.isReverse || (c as any).variants?.reverse) && (
                       <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                     )}
-                    {specialOverlayClass(c.special) && <div className={specialOverlayClass(c.special)!} />}
+                    {specialOverlayClass(c.special, setId, c) && <div className={specialOverlayClass(c.special, setId, c)!} />}
                     {(c.isReverse || (c as any).variants?.reverse) && <div className="card-badge card-badge-right">Reverse</div>}
                     {specialBadge(c.special) && (
                       <div className={`card-badge ${specialBadge(c.special)!.cls}`}>
@@ -1065,6 +1117,11 @@ export default function RipRealmApp() {
         imageSrc={focusCard?.image}
         title={focusCard?.name || 'Card'}
         subtitle={focusCard?.subtitle}
+        isHolo={focusCard?.isHolo}
+        isReverse={focusCard?.isReverse}
+        overlayClass={focusCard?.overlayClass}
+        specialBadgeText={focusCard?.specialBadgeText}
+        specialBadgeClass={focusCard?.specialBadgeClass}
         onClose={() => setFocusCard(null)}
       />
     </div>
