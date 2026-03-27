@@ -99,12 +99,12 @@ function getHighlight(card: Card | null | undefined, setId: string): { label: st
 }
 
 export default function RipRealmApp() {
-  const RIP_SEAM_MIN_Y = 0.18
-  const RIP_SEAM_MAX_Y = 0.48
-  const RIP_START_MAX_X = 0.42
-  const RIP_TRACK_START_X = 0.08
-  const RIP_TRACK_END_X = 0.95
-  const RIP_RELEASE_THRESHOLD = 0.68
+  const RIP_SEAM_MIN_Y = 0.14
+  const RIP_SEAM_MAX_Y = 0.58
+  const RIP_START_MAX_X = 0.58
+  const RIP_TRACK_START_X = 0.04
+  const RIP_TRACK_END_X = 0.98
+  const RIP_RELEASE_THRESHOLD = 0.56
   const [setId, setSetId] = useState('sv10')
   const [packType, setPackType] = useState('standard')
   const [loading, setLoading] = useState(false)
@@ -128,6 +128,7 @@ export default function RipRealmApp() {
   const [ripCursorY, setRipCursorY] = useState(0.32)
   const [isRipGestureActive, setIsRipGestureActive] = useState(false)
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
+  const [isRevealSuspense, setIsRevealSuspense] = useState(false)
   const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isCompactMode, setIsCompactMode] = useState(false)
@@ -187,6 +188,17 @@ export default function RipRealmApp() {
   const bestPullHighlight = getHighlight(bestPull, setId)
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
+
+  function getPackOpeningTone(pack: Card[]): HighlightTone {
+    let bestTone: HighlightTone = 'base'
+    for (const card of pack) {
+      const tone = getHighlight(card, setId).tone
+      if (tone === 'secret') return 'secret'
+      if (tone === 'ultra') bestTone = 'ultra'
+      else if (tone === 'holo' && bestTone === 'base') bestTone = 'holo'
+    }
+    return bestTone
+  }
 
   // Fan-spread variants for summary grid cards
   const fanVariants = {
@@ -386,29 +398,37 @@ export default function RipRealmApp() {
       spotlightTimeoutRef.current = null
     }
 
+    const highlight = getHighlight(visibleCard, setId)
+    const suspenseDelay = highlight.tone === 'secret' ? 440 : highlight.tone === 'ultra' ? 370 : 220
     setIsCardFaceUp(false)
     setIsSpotlightMoment(false)
+    setIsRevealSuspense(highlight.tone === 'secret' || highlight.tone === 'ultra')
+    if (highlight.tone === 'secret' || highlight.tone === 'ultra') {
+      sfxRef.current.drawSlide(highlight.tone === 'secret' ? 0.98 : 0.88)
+    }
     flipTimeoutRef.current = window.setTimeout(() => {
+      setIsRevealSuspense(false)
       setIsCardFaceUp(true)
       sfxRef.current.flip()
-      const highlight = getHighlight(visibleCard, setId)
       if (highlight.label) sfxRef.current.rarity(highlight.tone)
+      sfxRef.current.cardLand(highlight.tone === 'secret' ? 0.95 : highlight.tone === 'ultra' ? 0.82 : highlight.tone === 'holo' ? 0.64 : 0.5)
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
         setIsSpotlightMoment(true)
         sfxRef.current.whoosh()
         sfxRef.current.hitStinger(highlight.tone)
+        sfxRef.current.hitRumble(highlight.tone)
         if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
           navigator.vibrate(highlight.tone === 'secret' ? [26, 42, 24, 52, 28] : [20, 34, 18])
         }
         spotlightTimeoutRef.current = window.setTimeout(() => {
           setIsSpotlightMoment(false)
           spotlightTimeoutRef.current = null
-        }, highlight.tone === 'secret' ? 1280 : 980)
+        }, highlight.tone === 'secret' ? 1360 : 1040)
       }
 
       flipTimeoutRef.current = null
-    }, 210)
+    }, suspenseDelay)
   }, [hasActiveOpening, visibleCard, isMuted])
 
   useEffect(() => {
@@ -555,6 +575,7 @@ export default function RipRealmApp() {
     setRipProgress(0)
     setIsRipGestureActive(false)
     setIsCardFaceUp(false)
+    setIsRevealSuspense(false)
     setIsSpotlightMoment(false)
     setShowRevealHint(false)
     setIsTransitioning(false)
@@ -608,6 +629,8 @@ export default function RipRealmApp() {
       return
     }
     setHasInteracted(true)
+    const progress = (revealIndex + 1) / Math.max(1, currentPack.length)
+    sfxRef.current.drawSlide(0.45 + progress * 0.4)
     sfxRef.current.whoosh()
     setSwipeDirection(direction)
     setIsTransitioning(true)
@@ -623,13 +646,16 @@ export default function RipRealmApp() {
 
   function startSleeveOpen() {
     if (currentPack.length === 0 || isSleeveOpening || isSleeveCharging || isSleeveRipping) return
+    const openingTone = getPackOpeningTone(currentPack)
+    const openingPower = openingTone === 'secret' ? 1 : openingTone === 'ultra' ? 0.86 : openingTone === 'holo' ? 0.72 : 0.58
 
     setHasInteracted(true)
     sfxRef.current.unlock()
     sfxRef.current.tap()
     setRipProgress(1)
     setIsSleeveCharging(true)
-    sfxRef.current.ripCharge()
+    sfxRef.current.ripCharge(openingPower)
+    sfxRef.current.packOpenAccent(openingTone)
     sfxRef.current.rustle()
 
     sleeveChargeAccentTimeoutRef.current = window.setTimeout(() => {
@@ -641,8 +667,8 @@ export default function RipRealmApp() {
       setIsSleeveCharging(false)
       setIsSleeveRipping(true)
       setIsSleeveOpening(true)
-      sfxRef.current.ripSnap()
-      sfxRef.current.tearOpen()
+      sfxRef.current.ripSnap(openingPower)
+      sfxRef.current.tearOpen(openingPower)
       if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
         navigator.vibrate([14, 18, 12, 32, 18])
       }
@@ -651,22 +677,22 @@ export default function RipRealmApp() {
       sleeveSnapTimeoutRef.current = window.setTimeout(() => {
         sfxRef.current.whoosh()
         sleeveSnapTimeoutRef.current = null
-      }, 70)
+      }, 64)
 
       sleeveChargeAccentTimeoutRef.current = window.setTimeout(() => {
         sfxRef.current.rustle()
         sleeveChargeAccentTimeoutRef.current = null
-      }, 140)
+      }, 132)
 
       sleevePopTimeoutRef.current = window.setTimeout(() => {
-        sfxRef.current.packPop()
+        sfxRef.current.packPop(openingPower)
         sleevePopTimeoutRef.current = null
-      }, 230)
+      }, 218)
 
       sleeveRipTimeoutRef.current = window.setTimeout(() => {
         setIsSleeveRipping(false)
         sleeveRipTimeoutRef.current = null
-      }, 520)
+      }, 500)
 
       sleeveOpenTimeoutRef.current = window.setTimeout(() => {
         setView('opening')
@@ -675,8 +701,8 @@ export default function RipRealmApp() {
         setRipProgress(0)
         setIsRipGestureActive(false)
         sleeveOpenTimeoutRef.current = null
-      }, 980)
-    }, 320)
+      }, 940)
+    }, 360)
   }
 
   function resetRipGesture(shouldResetProgress = true) {
@@ -735,10 +761,11 @@ export default function RipRealmApp() {
     const nx = (event.clientX - rect.left) / rect.width
     const ny = (event.clientY - rect.top) / rect.height
     const rawTrackProgress = Math.min(1, Math.max(0, (nx - RIP_TRACK_START_X) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
-    const seamCenter = 0.33
-    const seamAdherence = Math.max(0.5, 1 - Math.abs(ny - seamCenter) / 0.2)
-    const backtrackPenalty = event.clientX < ripStartRef.current.x - 16 ? 0.6 : 1
-    const progress = Math.min(1, rawTrackProgress * seamAdherence * backtrackPenalty)
+    const seamCenter = 0.36
+    const seamAdherence = Math.max(0.64, 1 - Math.abs(ny - seamCenter) / 0.3)
+    const backtrackPenalty = event.clientX < ripStartRef.current.x - 22 ? 0.82 : 1
+    const progressCandidate = rawTrackProgress * seamAdherence * backtrackPenalty
+    const progress = Math.min(1, Math.max(ripProgressRef.current * 0.92, progressCandidate))
     const previousProgress = lastRipSfxProgressRef.current
     setRipProgress(progress)
     ripProgressRef.current = progress
@@ -944,7 +971,7 @@ export default function RipRealmApp() {
               type="button"
               className={`sleeve-stage ${isSleeveCharging ? 'is-charging' : ''} ${isSleeveRipping ? 'is-ripping' : ''} ${isSleeveOpening ? 'is-opening' : ''} ${ripProgress > 0 ? 'is-rip-primed' : ''}`}
               disabled={isSleeveOpening || isSleeveCharging || isSleeveRipping}
-              whileHover={{ scale: isSleeveOpening ? 1 : 1.01 }}
+              whileHover={{ scale: isSleeveOpening ? 1 : 1.012 }}
               whileTap={{ scale: isSleeveOpening ? 1 : 0.99 }}
               animate={
                 isSleeveOpening
@@ -953,7 +980,7 @@ export default function RipRealmApp() {
                   ? { rotateZ: [0, -1.2, 1.1, -0.8, 0.5, -0.2, 0], scale: [1, 1.035, 1.015, 1.045, 1.01], y: [0, -1, 0, -1, 0] }
                     : { rotateZ: ripProgress * -1.6, scale: 1 + ripProgress * 0.03, y: ripProgress * -1.5 }
               }
-              transition={{ duration: isSleeveCharging ? 0.32 : 0.68, ease: [0.22, 0.61, 0.36, 1] }}
+              transition={{ duration: isSleeveCharging ? 0.36 : 0.62, ease: [0.2, 0.9, 0.25, 1] }}
               aria-label="Open pack sleeve"
               onPointerDown={handleSleevePointerDown}
               onPointerMove={handleSleevePointerMove}
@@ -991,7 +1018,7 @@ export default function RipRealmApp() {
               <motion.div
                 className="sleeve-shell"
                 animate={isSleeveOpening ? { y: [0, 14, 24], rotateZ: [0, -1.5, 0.8, 0], scale: [1, 1.025, 1] } : isSleeveCharging ? { y: [-6, -2, -8, -3], rotateZ: [0, -0.6, 0.45, -0.3] } : { y: 0, rotateZ: 0, scale: 1 }}
-                transition={{ duration: 0.64, ease: [0.22, 0.61, 0.36, 1] }}
+                transition={{ duration: 0.58, ease: [0.2, 0.9, 0.25, 1] }}
                 style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
               >
                 <div className={`sleeve-trace-ui ${isRipGestureActive || ripProgress > 0 ? 'is-active' : ''}`} aria-hidden="true">
@@ -1012,8 +1039,8 @@ export default function RipRealmApp() {
                     <img src="/card-back.png" alt="deck" className="deck-back" />
                   </motion.div>
                 </div>
-                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { x: [0, 14, 24, 34], y: [0, -1, -2, -2], scaleX: [1, 1.07, 1.1, 1.12], opacity: [1, 0.95, 0.72, 0.45] } : { x: ripProgress * 2.2, y: 0, scaleX: 1 + ripProgress * 0.02, opacity: 0.92 + ripProgress * 0.08 }} transition={{ duration: isSleeveOpening ? 0.46 : 0.1, ease: [0.22, 1, 0.36, 1] }} />
-                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.12, 1.24, 1.08, 0.94], opacity: [0.24, 1, 0.92, 0.75], y: [0, -3, -1, 0], rotate: [0, -1.5, 1, 0] } : { scaleX: 0.14 + ripProgress * 0.96, opacity: 0.52 + ripProgress * 0.36, y: -ripProgress * 1.1, rotate: 0 }} transition={{ duration: isSleeveOpening ? 0.44 : 0.1, delay: isSleeveOpening ? 0.06 : 0, ease: 'easeOut' }} />
+                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { x: [0, 14, 24, 34], y: [0, -1, -2, -2], scaleX: [1, 1.07, 1.1, 1.12], opacity: [1, 0.95, 0.72, 0.45] } : { x: ripProgress * 2.2, y: 0, scaleX: 1 + ripProgress * 0.02, opacity: 0.92 + ripProgress * 0.08 }} transition={{ duration: isSleeveOpening ? 0.42 : 0.1, ease: [0.2, 1, 0.28, 1] }} />
+                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.12, 1.24, 1.08, 0.94], opacity: [0.24, 1, 0.92, 0.75], y: [0, -3, -1, 0], rotate: [0, -1.5, 1, 0] } : { scaleX: 0.14 + ripProgress * 0.96, opacity: 0.52 + ripProgress * 0.36, y: -ripProgress * 1.1, rotate: 0 }} transition={{ duration: isSleeveOpening ? 0.4 : 0.1, delay: isSleeveOpening ? 0.05 : 0, ease: 'easeOut' }} />
                 <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '36%', '160%'], opacity: [0, 0.95, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.64, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
                 <div className="sleeve-crimp sleeve-crimp-top" aria-hidden="true" />
                 <div className="sleeve-crimp sleeve-crimp-bottom" aria-hidden="true" />
@@ -1049,7 +1076,7 @@ export default function RipRealmApp() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${isSpotlightMoment && isBigHitTone ? 'opening-big-hit' : ''}`}>
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${isSpotlightMoment && isBigHitTone ? 'opening-big-hit' : ''} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
@@ -1090,6 +1117,11 @@ export default function RipRealmApp() {
           </div>
 
           <div className="opening-stage">
+            <div className="opening-draw-trails" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
             {!shouldCollapseText && <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>}
             {isSpotlightMoment && currentHighlight.label && (
               <motion.div
@@ -1097,7 +1129,7 @@ export default function RipRealmApp() {
                 initial={{ opacity: 0, y: 8, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.22, ease: [0.2, 0.9, 0.25, 1] }}
               >
                 {currentHighlight.tone === 'secret' ? 'Secret Spotlight' : 'Ultra Spotlight'}
               </motion.div>
@@ -1107,7 +1139,7 @@ export default function RipRealmApp() {
                 className={`reveal-banner reveal-banner-${currentHighlight.tone}`}
                 initial={{ opacity: 0, y: 12, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.25 }}
+                transition={{ duration: 0.28, ease: [0.2, 0.9, 0.25, 1] }}
               >
                 {currentHighlight.label}
               </motion.div>
@@ -1168,15 +1200,15 @@ export default function RipRealmApp() {
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={{ duration: 0.26, ease: 'easeOut' }}
-                  className={`opening-current-card ${isSpotlightMoment && isBigHitTone ? 'dramatic-hit' : ''}`}
+                  transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
+                  className={`opening-current-card ${isSpotlightMoment && isBigHitTone ? 'dramatic-hit' : ''} ${isRevealSuspense ? 'is-suspense' : ''}`}
                 >
                   <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
                   <div className="opening-flip-shell">
                     <motion.div
                       className="opening-flip-card"
                       animate={{ rotateY: isCardFaceUp ? 180 : 0 }}
-                      transition={{ duration: 0.38, ease: [0.18, 0.84, 0.32, 1] }}
+                      transition={{ duration: 0.34, ease: [0.2, 0.9, 0.25, 1] }}
                     >
                       <div className="opening-card-face opening-card-face-back">
                         <img src="/card-back.png" alt="card back" className="opening-back-art" draggable={false} />
@@ -1260,7 +1292,7 @@ export default function RipRealmApp() {
                 className={`best-pull-spotlight best-pull-${bestPullHighlight.tone}`}
                 initial={{ opacity: 0, y: 24, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.35 }}
+                transition={{ duration: 0.38, ease: [0.2, 0.9, 0.25, 1] }}
               >
                 <div
                   className="best-pull-card clickable-card"
