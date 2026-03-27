@@ -137,24 +137,22 @@ class PocketSfx {
 
   ripCharge(intensity = 0.65) {
     const power = Math.max(0.2, Math.min(1, intensity))
-    this.playNoise({ duration: 0.16 + power * 0.08, volume: 0.018 + power * 0.013, highpass: 1700 + power * 800 })
-    this.playTone({ frequency: 188 + power * 46, frequencyEnd: 152 + power * 34, duration: 0.15 + power * 0.06, type: 'triangle', volume: 0.016 + power * 0.011 })
-    this.playTone({ frequency: 470 + power * 80, frequencyEnd: 380 + power * 70, duration: 0.1 + power * 0.05, type: 'sine', volume: 0.008 + power * 0.007, delay: 0.03 })
-    this.playNoise({ duration: 0.08 + power * 0.06, volume: 0.009 + power * 0.009, highpass: 2400 + power * 800, delay: 0.07 })
+    this.playNoise({ duration: 0.14 + power * 0.08, volume: 0.015 + power * 0.01, highpass: 1600 + power * 700 })
+    this.playTone({ frequency: 184 + power * 42, frequencyEnd: 148 + power * 30, duration: 0.14 + power * 0.06, type: 'triangle', volume: 0.013 + power * 0.009 })
+    this.playNoise({ duration: 0.07 + power * 0.05, volume: 0.007 + power * 0.007, highpass: 2200 + power * 600, delay: 0.065 })
   }
 
   ripSnap(intensity = 0.7) {
     const power = Math.max(0.2, Math.min(1, intensity))
-    this.playNoise({ duration: 0.05 + power * 0.05, volume: 0.022 + power * 0.02, highpass: 2700 + power * 1000 })
-    this.playTone({ frequency: 720 + power * 220, frequencyEnd: 450 + power * 130, duration: 0.07 + power * 0.06, type: 'triangle', volume: 0.012 + power * 0.01 })
-    this.playTone({ frequency: 156 + power * 40, frequencyEnd: 98 + power * 28, duration: 0.1 + power * 0.07, type: 'sine', volume: 0.009 + power * 0.009, delay: 0.01 })
+    this.playNoise({ duration: 0.05 + power * 0.04, volume: 0.017 + power * 0.014, highpass: 2500 + power * 900 })
+    this.playTone({ frequency: 680 + power * 180, frequencyEnd: 420 + power * 110, duration: 0.06 + power * 0.05, type: 'triangle', volume: 0.009 + power * 0.008 })
+    this.playTone({ frequency: 150 + power * 34, frequencyEnd: 94 + power * 24, duration: 0.09 + power * 0.06, type: 'sine', volume: 0.007 + power * 0.007, delay: 0.01 })
   }
 
   ripDrag(intensity = 0.5) {
     const power = Math.max(0.15, Math.min(1, intensity))
-    this.playNoise({ duration: 0.05 + power * 0.03, volume: 0.011 + power * 0.013, highpass: 1700 + power * 900 })
-    this.playNoise({ duration: 0.035 + power * 0.03, volume: 0.006 + power * 0.01, highpass: 2600 + power * 900, delay: 0.012 })
-    this.playTone({ frequency: 490 - power * 90, frequencyEnd: 350 - power * 70, duration: 0.05 + power * 0.03, type: 'triangle', volume: 0.004 + power * 0.008 })
+    this.playNoise({ duration: 0.04 + power * 0.03, volume: 0.008 + power * 0.009, highpass: 1600 + power * 700 })
+    this.playTone({ frequency: 460 - power * 70, frequencyEnd: 330 - power * 56, duration: 0.045 + power * 0.028, type: 'triangle', volume: 0.003 + power * 0.005 })
   }
 
   ripStretch(intensity = 0.7) {
@@ -170,13 +168,10 @@ class PocketSfx {
 
   tearOpen(intensity = 0.75) {
     const power = Math.max(0.2, Math.min(1, intensity))
-    this.playNoise({ duration: 0.06 + power * 0.06, volume: 0.024 + power * 0.022, highpass: 2900 + power * 800 })
-    this.playTone({ frequency: 590 + power * 160, frequencyEnd: 390 + power * 140, duration: 0.07 + power * 0.08, type: 'triangle', volume: 0.012 + power * 0.01 })
-    this.playNoise({ duration: 0.2 + power * 0.2, volume: 0.02 + power * 0.026, highpass: 1500 + power * 700 })
-    this.playNoise({ duration: 0.13 + power * 0.15, volume: 0.014 + power * 0.02, highpass: 2300 + power * 700, delay: 0.08 })
-    this.playTone({ frequency: 500 + power * 200, frequencyEnd: 250 + power * 140, duration: 0.2 + power * 0.16, type: 'sawtooth', volume: 0.012 + power * 0.014, delay: 0.02 })
-    this.playTone({ frequency: 820 + power * 220, frequencyEnd: 450 + power * 150, duration: 0.13 + power * 0.14, type: 'triangle', volume: 0.009 + power * 0.01, delay: 0.11 })
-    this.playTone({ frequency: 1220 + power * 180, frequencyEnd: 640 + power * 190, duration: 0.1 + power * 0.1, type: 'sine', volume: 0.006 + power * 0.007, delay: 0.16 })
+    this.playNoise({ duration: 0.06 + power * 0.05, volume: 0.019 + power * 0.016, highpass: 2700 + power * 700 })
+    this.playTone({ frequency: 560 + power * 140, frequencyEnd: 370 + power * 120, duration: 0.07 + power * 0.06, type: 'triangle', volume: 0.009 + power * 0.008 })
+    this.playNoise({ duration: 0.18 + power * 0.16, volume: 0.015 + power * 0.018, highpass: 1450 + power * 600, delay: 0.015 })
+    this.playTone({ frequency: 460 + power * 140, frequencyEnd: 240 + power * 110, duration: 0.16 + power * 0.12, type: 'sawtooth', volume: 0.009 + power * 0.01, delay: 0.03 })
   }
 
   packPop(intensity = 0.65) {
@@ -209,10 +204,9 @@ class PocketSfx {
   }
 
   whoosh() {
-    this.playNoise({ duration: 0.13, volume: 0.024, highpass: 1300 })
-    this.playTone({ frequency: 470, frequencyEnd: 250, duration: 0.16, type: 'triangle', volume: 0.026 })
-    this.playNoise({ duration: 0.09, volume: 0.012, highpass: 2500, delay: 0.03 })
-    this.playTone({ frequency: 700, frequencyEnd: 390, duration: 0.11, type: 'sine', volume: 0.009, delay: 0.018 })
+    this.playNoise({ duration: 0.12, volume: 0.018, highpass: 1200 })
+    this.playTone({ frequency: 440, frequencyEnd: 240, duration: 0.15, type: 'triangle', volume: 0.018 })
+    this.playTone({ frequency: 660, frequencyEnd: 370, duration: 0.1, type: 'sine', volume: 0.006, delay: 0.02 })
   }
 
   drawSlide(intensity = 0.5) {

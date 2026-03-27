@@ -101,7 +101,7 @@ function getHighlight(card: Card | null | undefined, setId: string): { label: st
 export default function RipRealmApp() {
   const RIP_SEAM_MIN_Y = 0.14
   const RIP_SEAM_MAX_Y = 0.58
-  const RIP_START_MAX_X = 0.58
+  const RIP_MIDPOINT_X = 0.5
   const RIP_TRACK_START_X = 0.04
   const RIP_TRACK_END_X = 0.98
   const RIP_RELEASE_THRESHOLD = 0.56
@@ -139,10 +139,13 @@ export default function RipRealmApp() {
   const suppressClickRef = useRef(false)
   const sleeveGestureConsumedRef = useRef(false)
   const ripStartRef = useRef<{ x: number; y: number; nx: number; ny: number } | null>(null)
+  const ripDirectionRef = useRef<1 | -1>(1)
   const ripMovedRef = useRef(false)
   const ripProgressRef = useRef(0)
   const lastRipSfxProgressRef = useRef(0)
   const lastRustleSfxProgressRef = useRef(0)
+  const lastRipSfxAtRef = useRef(0)
+  const lastRustleSfxAtRef = useRef(0)
   const sleeveChargeTimeoutRef = useRef<number | null>(null)
   const sleeveChargeAccentTimeoutRef = useRef<number | null>(null)
   const sleeveRipTimeoutRef = useRef<number | null>(null)
@@ -651,12 +654,10 @@ export default function RipRealmApp() {
 
     setHasInteracted(true)
     sfxRef.current.unlock()
-    sfxRef.current.tap()
     setRipProgress(1)
     setIsSleeveCharging(true)
     sfxRef.current.ripCharge(openingPower)
     sfxRef.current.packOpenAccent(openingTone)
-    sfxRef.current.rustle()
 
     sleeveChargeAccentTimeoutRef.current = window.setTimeout(() => {
       sfxRef.current.rustle()
@@ -715,6 +716,8 @@ export default function RipRealmApp() {
       setRipProgress(0)
       ripProgressRef.current = 0
     }
+    lastRipSfxAtRef.current = 0
+    lastRustleSfxAtRef.current = 0
   }
 
   function handleSleevePointerDown(event: React.PointerEvent<HTMLButtonElement>) {
@@ -723,21 +726,28 @@ export default function RipRealmApp() {
     const nx = (event.clientX - rect.left) / rect.width
     const ny = (event.clientY - rect.top) / rect.height
 
-    if (nx > RIP_START_MAX_X || ny < RIP_SEAM_MIN_Y || ny > RIP_SEAM_MAX_Y) {
+    if (ny < RIP_SEAM_MIN_Y || ny > RIP_SEAM_MAX_Y) {
       setIsRipGestureActive(false)
       setRipProgress(0)
       return
     }
 
+    const ripDirection: 1 | -1 = nx <= RIP_MIDPOINT_X ? 1 : -1
+
     event.currentTarget.setPointerCapture(event.pointerId)
     setRipCursorX((event.clientX - rect.left) / rect.width)
     setRipCursorY((event.clientY - rect.top) / rect.height)
     ripStartRef.current = { x: event.clientX, y: event.clientY, nx, ny }
+    ripDirectionRef.current = ripDirection
     ripMovedRef.current = false
     lastRipSfxProgressRef.current = 0
     lastRustleSfxProgressRef.current = 0
+    lastRipSfxAtRef.current = 0
+    lastRustleSfxAtRef.current = 0
     setIsRipGestureActive(true)
-    const initialTrack = Math.min(1, Math.max(0, (nx - RIP_TRACK_START_X) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
+    const initialTrack = ripDirection === 1
+      ? Math.min(1, Math.max(0, (nx - RIP_TRACK_START_X) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
+      : Math.min(1, Math.max(0, (RIP_TRACK_END_X - nx) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
     setRipProgress(initialTrack)
     ripProgressRef.current = initialTrack
     setHasInteracted(true)
@@ -760,10 +770,15 @@ export default function RipRealmApp() {
     const deltaX = Math.abs(event.clientX - ripStartRef.current.x)
     const nx = (event.clientX - rect.left) / rect.width
     const ny = (event.clientY - rect.top) / rect.height
-    const rawTrackProgress = Math.min(1, Math.max(0, (nx - RIP_TRACK_START_X) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
+    const rawTrackProgress = ripDirectionRef.current === 1
+      ? Math.min(1, Math.max(0, (nx - RIP_TRACK_START_X) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
+      : Math.min(1, Math.max(0, (RIP_TRACK_END_X - nx) / (RIP_TRACK_END_X - RIP_TRACK_START_X)))
     const seamCenter = 0.36
     const seamAdherence = Math.max(0.64, 1 - Math.abs(ny - seamCenter) / 0.3)
-    const backtrackPenalty = event.clientX < ripStartRef.current.x - 22 ? 0.82 : 1
+    const isBacktracking = ripDirectionRef.current === 1
+      ? event.clientX < ripStartRef.current.x - 22
+      : event.clientX > ripStartRef.current.x + 22
+    const backtrackPenalty = isBacktracking ? 0.82 : 1
     const progressCandidate = rawTrackProgress * seamAdherence * backtrackPenalty
     const progress = Math.min(1, Math.max(ripProgressRef.current * 0.92, progressCandidate))
     const previousProgress = lastRipSfxProgressRef.current
@@ -771,14 +786,18 @@ export default function RipRealmApp() {
     ripProgressRef.current = progress
     if (deltaX > 8) ripMovedRef.current = true
 
-    if (progress - lastRipSfxProgressRef.current >= 0.06) {
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now()
+
+    if (progress - lastRipSfxProgressRef.current >= 0.06 && nowMs - lastRipSfxAtRef.current >= 52) {
       sfxRef.current.ripDrag(progress)
       lastRipSfxProgressRef.current = progress
+      lastRipSfxAtRef.current = nowMs
     }
 
-    if (progress - lastRustleSfxProgressRef.current >= 0.12) {
+    if (progress - lastRustleSfxProgressRef.current >= 0.14 && nowMs - lastRustleSfxAtRef.current >= 120) {
       sfxRef.current.rustle()
       lastRustleSfxProgressRef.current = progress
+      lastRustleSfxAtRef.current = nowMs
     }
 
     if (previousProgress < 0.32 && progress >= 0.32) {
@@ -1058,7 +1077,7 @@ export default function RipRealmApp() {
                     : <div className="sleeve-brand">{setDisplayName}</div>
                   }
                   <div className="sleeve-packtype">{packTypeLabel}</div>
-                  <div className="sleeve-hint">{isSleeveRipping ? 'Ripping...' : isSleeveCharging ? 'Charging...' : ripProgress > 0 ? 'Keep dragging right to tear' : 'Drag left → right on seam'}</div>
+                  <div className="sleeve-hint">{isSleeveRipping ? 'Ripping...' : isSleeveCharging ? 'Charging...' : ripProgress > 0 ? 'Keep tracing across seam' : 'Drag left ↔ right on seam'}</div>
                 </div>
               </motion.div>
             </motion.button>
