@@ -26,6 +26,7 @@ export function ensureCacheDir() {
 
 export type SetCacheEntry = { id: string; name: string; releaseDate?: string; logo?: string }
 export type CardCacheEntry = { id: string; name: string; images: { small?: string; large?: string }; rarity?: string }
+export type SetCacheReadResult = { sets: SetCacheEntry[]; cachePath: string; mtimeMs: number }
 
 // Sets cache
 export function getSetsFromCache(): SetCacheEntry[] | null {
@@ -38,6 +39,25 @@ export function getSetsFromCache(): SetCacheEntry[] | null {
     }
   } catch (e) {
     console.error('[Cache] Error reading sets cache:', e)
+  }
+  return null
+}
+
+export function getSetsFromCacheWithMeta(): SetCacheReadResult | null {
+  try {
+    for (const filepath of getReadableCachePaths('sets.json')) {
+      if (fs.existsSync(filepath)) {
+        const stat = fs.statSync(filepath)
+        const data = fs.readFileSync(filepath, 'utf-8')
+        return {
+          sets: JSON.parse(data),
+          cachePath: filepath,
+          mtimeMs: stat.mtimeMs,
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Cache] Error reading sets cache metadata:', e)
   }
   return null
 }

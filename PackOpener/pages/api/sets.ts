@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getSetsFromCache, setSetsCache } from '../../lib/cacheManager'
+import { getSetsFromCacheWithMeta, setSetsCache } from '../../lib/cacheManager'
 import https from 'https'
 
 // Disable SSL certificate verification for development
@@ -83,25 +83,38 @@ function fetchWithCertBypass(url: string): Promise<any> {
 // In-memory cache for quick access
 let inMemoryCache: { ts: number; sets: Array<{ id: string; name: string; releaseDate?: string; logo?: string }> } | null = null
 const CACHE_TTL = 1000 * 60 * 60 // 1 hour
+const FILE_CACHE_TTL = 1000 * 60 * 30 // 30 minutes
 
 // Empty fallback - forces fresh fetch from tcgdex on every error
 const FALLBACK_SETS: Array<{ id: string; name: string }> = []
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const refreshQuery = Array.isArray(req.query.refresh) ? req.query.refresh[0] : req.query.refresh
+  const forceRefresh = refreshQuery === '1' || refreshQuery === 'true'
+  let staleCacheSets: Array<{ id: string; name: string; releaseDate?: string; logo?: string }> | null = null
+
   try {
     // Check in-memory cache first
-    if (inMemoryCache && Date.now() - inMemoryCache.ts < CACHE_TTL) {
+    if (!forceRefresh && inMemoryCache && Date.now() - inMemoryCache.ts < CACHE_TTL) {
       console.log('[Sets] Returning cached sets from memory')
       return res.status(200).json({ count: inMemoryCache.sets.length, sets: inMemoryCache.sets, source: 'memory-cache' })
     }
 
     // Check file cache second
-    const fileCache = getSetsFromCache()
-    if (fileCache && fileCache.length > 0) {
-      console.log(`[Sets] Loaded ${fileCache.length} sets from file cache`)
-      inMemoryCache = { ts: Date.now(), sets: fileCache }
-      return res.status(200).json({ count: fileCache.length, sets: fileCache, source: 'file-cache' })
+    const fileCache = getSetsFromCacheWithMeta()
+    if (!forceRefresh && fileCache && fileCache.sets.length > 0) {
+      const ageMs = Date.now() - fileCache.mtimeMs
+      const isFresh = ageMs < FILE_CACHE_TTL
+
+      if (isFresh) {
+        console.log(`[Sets] Loaded ${fileCache.sets.length} sets from file cache`)
+        inMemoryCache = { ts: Date.now(), sets: fileCache.sets }
+        return res.status(200).json({ count: fileCache.sets.length, sets: fileCache.sets, source: 'file-cache' })
+      }
+
+      staleCacheSets = fileCache.sets
+      console.log(`[Sets] File cache stale (${Math.round(ageMs / 1000)}s old), refreshing from tcgdex...`)
     }
 
     console.log('[Sets] No cache found, fetching from tcgdex...')
@@ -152,6 +165,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   } catch (err: any) {
     console.log(`[Sets] Error fetching from API: ${err.message}`)
+    if (staleCacheSets && staleCacheSets.length > 0) {
+      console.log(`[Sets] Returning stale cache (${staleCacheSets.length} sets) after fetch failure`)
+      inMemoryCache = { ts: Date.now(), sets: staleCacheSets }
+      return res.status(200).json({ count: staleCacheSets.length, sets: staleCacheSets, source: 'stale-file-cache', error: err.message })
+    }
     console.log(`[Sets] Returning fallback sets (${FALLBACK_SETS.length} sets)`)
     // on error, return fallback list
     inMemoryCache = { ts: Date.now(), sets: FALLBACK_SETS }
