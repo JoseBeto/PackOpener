@@ -120,6 +120,18 @@ class PocketSfx {
     this.playTone({ frequency: 180, frequencyEnd: 120, duration: 0.12, type: 'sine', volume: 0.018, delay: 0.01 })
   }
 
+  ripDrag(intensity = 0.5) {
+    const power = Math.max(0.15, Math.min(1, intensity))
+    this.playNoise({ duration: 0.04 + power * 0.03, volume: 0.013 + power * 0.018, highpass: 2200 + power * 1100 })
+    this.playTone({ frequency: 520 - power * 120, frequencyEnd: 380 - power * 90, duration: 0.04 + power * 0.03, type: 'triangle', volume: 0.006 + power * 0.01 })
+  }
+
+  ripStretch(intensity = 0.7) {
+    const power = Math.max(0.2, Math.min(1, intensity))
+    this.playNoise({ duration: 0.09 + power * 0.08, volume: 0.016 + power * 0.02, highpass: 1700 + power * 900 })
+    this.playTone({ frequency: 360 + power * 90, frequencyEnd: 210 + power * 40, duration: 0.08 + power * 0.06, type: 'sawtooth', volume: 0.01 + power * 0.014 })
+  }
+
   tear() {
     this.playNoise({ duration: 0.23, volume: 0.06, highpass: 1600 })
     this.playTone({ frequency: 300, frequencyEnd: 210, duration: 0.18, type: 'sawtooth', volume: 0.03 })
@@ -176,6 +188,22 @@ class PocketSfx {
     this.playTone({ frequency: 1720, duration: 0.3, type: 'sine', volume: 0.032, delay: 0.23 })
     this.playTone({ frequency: 2100, frequencyEnd: 1680, duration: 0.18, type: 'triangle', volume: 0.018, delay: 0.3 })
     this.playNoise({ duration: 0.14, volume: 0.014, highpass: 3600, delay: 0.06 })
+  }
+
+  hitStinger(tone: HighlightTone) {
+    if (tone !== 'ultra' && tone !== 'secret') return
+    if (tone === 'ultra') {
+      this.playTone({ frequency: 460, duration: 0.18, type: 'sawtooth', volume: 0.028 })
+      this.playTone({ frequency: 740, duration: 0.22, type: 'triangle', volume: 0.034, delay: 0.06 })
+      this.playTone({ frequency: 980, duration: 0.18, type: 'sine', volume: 0.026, delay: 0.12 })
+      this.playNoise({ duration: 0.16, volume: 0.018, highpass: 2600, delay: 0.04 })
+      return
+    }
+    this.playTone({ frequency: 380, duration: 0.22, type: 'sawtooth', volume: 0.03 })
+    this.playTone({ frequency: 620, duration: 0.26, type: 'triangle', volume: 0.038, delay: 0.05 })
+    this.playTone({ frequency: 930, duration: 0.28, type: 'sine', volume: 0.032, delay: 0.11 })
+    this.playTone({ frequency: 1260, duration: 0.24, type: 'triangle', volume: 0.022, delay: 0.17 })
+    this.playNoise({ duration: 0.2, volume: 0.02, highpass: 2500, delay: 0.05 })
   }
 
   summary() {
