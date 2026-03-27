@@ -67,6 +67,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
     async function load() {
       setLoading(true)
       try {
+        let usedLocalCache = false
         // try localStorage cache first
         const raw = typeof window !== 'undefined' ? localStorage.getItem(SETS_CACHE_KEY) : null
         if (raw) {
@@ -75,8 +76,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
             if (parsed.ts && Date.now() - parsed.ts < 1000 * 60 * 60 && parsed.sets) {
               if (mounted) {
                 setSets(sortSetsNewestFirst(parsed.sets))
-                setLoading(false)
-                return
+                usedLocalCache = true
               }
             }
           } catch (e) {
@@ -84,7 +84,8 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
           }
         }
 
-        const res = await fetch('/api/sets')
+        const refreshParam = usedLocalCache ? '?refresh=1' : ''
+        const res = await fetch(`/api/sets${refreshParam}`)
         const data = await res.json()
         if (mounted && data.sets) {
           const mapped = data.sets.map((s: any) => ({ id: s.id, name: s.name, releaseDate: s.releaseDate }))
