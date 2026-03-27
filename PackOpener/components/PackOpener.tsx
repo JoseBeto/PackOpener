@@ -127,7 +127,9 @@ export default function RipRealmApp() {
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveChargeTimeoutRef = useRef<number | null>(null)
+  const sleeveChargeAccentTimeoutRef = useRef<number | null>(null)
   const sleeveRipTimeoutRef = useRef<number | null>(null)
+  const sleeveSnapTimeoutRef = useRef<number | null>(null)
   const sleevePopTimeoutRef = useRef<number | null>(null)
   const sleeveOpenTimeoutRef = useRef<number | null>(null)
   const flipTimeoutRef = useRef<number | null>(null)
@@ -296,7 +298,9 @@ export default function RipRealmApp() {
   useEffect(() => {
     return () => {
       if (sleeveChargeTimeoutRef.current) window.clearTimeout(sleeveChargeTimeoutRef.current)
+      if (sleeveChargeAccentTimeoutRef.current) window.clearTimeout(sleeveChargeAccentTimeoutRef.current)
       if (sleeveRipTimeoutRef.current) window.clearTimeout(sleeveRipTimeoutRef.current)
+      if (sleeveSnapTimeoutRef.current) window.clearTimeout(sleeveSnapTimeoutRef.current)
       if (sleevePopTimeoutRef.current) window.clearTimeout(sleevePopTimeoutRef.current)
       if (sleeveOpenTimeoutRef.current) window.clearTimeout(sleeveOpenTimeoutRef.current)
       if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
@@ -493,9 +497,17 @@ export default function RipRealmApp() {
       window.clearTimeout(sleeveChargeTimeoutRef.current)
       sleeveChargeTimeoutRef.current = null
     }
+    if (sleeveChargeAccentTimeoutRef.current) {
+      window.clearTimeout(sleeveChargeAccentTimeoutRef.current)
+      sleeveChargeAccentTimeoutRef.current = null
+    }
     if (sleeveRipTimeoutRef.current) {
       window.clearTimeout(sleeveRipTimeoutRef.current)
       sleeveRipTimeoutRef.current = null
+    }
+    if (sleeveSnapTimeoutRef.current) {
+      window.clearTimeout(sleeveSnapTimeoutRef.current)
+      sleeveSnapTimeoutRef.current = null
     }
     if (sleevePopTimeoutRef.current) {
       window.clearTimeout(sleevePopTimeoutRef.current)
@@ -597,35 +609,47 @@ export default function RipRealmApp() {
     sfxRef.current.unlock()
     sfxRef.current.tap()
     setIsSleeveCharging(true)
+    sfxRef.current.ripCharge()
     sfxRef.current.rustle()
+
+    sleeveChargeAccentTimeoutRef.current = window.setTimeout(() => {
+      sfxRef.current.rustle()
+      sleeveChargeAccentTimeoutRef.current = null
+    }, 130)
 
     sleeveChargeTimeoutRef.current = window.setTimeout(() => {
       setIsSleeveCharging(false)
       setIsSleeveRipping(true)
       setIsSleeveOpening(true)
+      sfxRef.current.ripSnap()
       sfxRef.current.tearOpen()
       if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
-        navigator.vibrate([12, 26, 10])
+        navigator.vibrate([14, 18, 12, 32, 18])
       }
       sleeveChargeTimeoutRef.current = null
+
+      sleeveSnapTimeoutRef.current = window.setTimeout(() => {
+        sfxRef.current.whoosh()
+        sleeveSnapTimeoutRef.current = null
+      }, 70)
 
       sleevePopTimeoutRef.current = window.setTimeout(() => {
         sfxRef.current.packPop()
         sleevePopTimeoutRef.current = null
-      }, 180)
+      }, 230)
 
       sleeveRipTimeoutRef.current = window.setTimeout(() => {
         setIsSleeveRipping(false)
         sleeveRipTimeoutRef.current = null
-      }, 360)
+      }, 520)
 
       sleeveOpenTimeoutRef.current = window.setTimeout(() => {
         setView('opening')
         setIsSleeveRipping(false)
         setIsSleeveOpening(false)
         sleeveOpenTimeoutRef.current = null
-      }, 900)
-    }, 260)
+      }, 980)
+    }, 320)
   }
 
   function toggleMuted() {
@@ -789,12 +813,12 @@ export default function RipRealmApp() {
               whileTap={{ scale: isSleeveOpening ? 1 : 0.99 }}
               animate={
                 isSleeveOpening
-                  ? { rotateZ: [0, -1.8, 1.7, -0.9, 0], scale: [1, 1.03, 1.005, 1] }
+                  ? { rotateZ: [0, -3.2, 2.6, -1.4, 0.3, 0], scale: [1, 1.06, 1.015, 1.03, 1], y: [0, -2, 1, -1, 0] }
                   : isSleeveCharging
-                  ? { rotateZ: [0, -0.5, 0.5, -0.2, 0], scale: [1, 1.03, 1.015] }
-                  : { rotateZ: 0, scale: 1 }
+                  ? { rotateZ: [0, -1.2, 1.1, -0.8, 0.5, -0.2, 0], scale: [1, 1.035, 1.015, 1.045, 1.01], y: [0, -1, 0, -1, 0] }
+                  : { rotateZ: 0, scale: 1, y: 0 }
               }
-              transition={{ duration: isSleeveCharging ? 0.26 : 0.58, ease: 'easeInOut' }}
+              transition={{ duration: isSleeveCharging ? 0.32 : 0.68, ease: [0.22, 0.61, 0.36, 1] }}
               aria-label="Open pack sleeve"
               onPointerMove={(e) => {
                 if (isSleeveOpening || isSleeveCharging || isSleeveRipping) return
@@ -809,20 +833,22 @@ export default function RipRealmApp() {
             >
               <motion.div
                 className="sleeve-charge-aura"
-                animate={isSleeveCharging ? { opacity: [0.15, 0.6, 0.2], scale: [0.92, 1.05, 1] } : { opacity: 0, scale: 0.92 }}
-                transition={{ duration: 0.32, ease: 'easeOut' }}
+                animate={isSleeveCharging ? { opacity: [0.12, 0.56, 0.22, 0.62, 0.18], scale: [0.9, 1.03, 0.96, 1.08, 1] } : { opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
               />
               <motion.div
                 className="sleeve-rip-impact"
-                animate={isSleeveRipping ? { opacity: [0, 0.95, 0], scale: [0.6, 1.08, 1.2] } : { opacity: 0, scale: 0.6 }}
-                transition={{ duration: 0.34, ease: 'easeOut' }}
+                animate={isSleeveRipping ? { opacity: [0, 1, 0.3, 0], scale: [0.56, 1.16, 1.22, 1.34] } : { opacity: 0, scale: 0.56 }}
+                transition={{ duration: 0.44, ease: 'easeOut' }}
               />
               <motion.div
                 className="sleeve-rip-glow"
-                animate={isSleeveRipping ? { opacity: [0, 1, 0], scale: [0.8, 1, 0.95] } : { opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.32, ease: 'easeOut' }}
+                animate={isSleeveRipping ? { opacity: [0, 1, 0.45, 0], scale: [0.76, 1.05, 1.02, 1.08] } : { opacity: 0, scale: 0.76 }}
+                transition={{ duration: 0.42, ease: 'easeOut' }}
               />
               <div className="sleeve-rip-shards" aria-hidden="true">
+                <span />
+                <span />
                 <span />
                 <span />
                 <span />
@@ -830,26 +856,26 @@ export default function RipRealmApp() {
               </div>
               <motion.div
                 className="sleeve-shell"
-                animate={isSleeveOpening ? { y: [0, 8, 18], scale: [1, 1.015, 1] } : isSleeveCharging ? { y: -4 } : { y: 0, scale: 1 }}
-                transition={{ duration: 0.54, ease: 'easeOut' }}
+                animate={isSleeveOpening ? { y: [0, 14, 24], rotateZ: [0, -1.5, 0.8, 0], scale: [1, 1.025, 1] } : isSleeveCharging ? { y: [-6, -2, -8, -3], rotateZ: [0, -0.6, 0.45, -0.3] } : { y: 0, rotateZ: 0, scale: 1 }}
+                transition={{ duration: 0.64, ease: [0.22, 0.61, 0.36, 1] }}
                 style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
               >
                 <div className="sleeve-pocket" aria-hidden="true">
                   <motion.div
                     className="sleeve-deck"
-                    animate={isSleeveOpening ? { y: [56, 34, -170], opacity: [0.98, 1, 1], scale: [0.98, 1.03, 1] } : isSleeveCharging ? { y: 46, opacity: 1, scale: 1.015 } : { y: 56, opacity: 0.98, scale: 0.98 }}
-                    transition={{ duration: 0.66, delay: isSleeveOpening ? 0.08 : 0, ease: [0.18, 0.84, 0.32, 1] }}
+                    animate={isSleeveOpening ? { y: [56, 28, -22, -210], opacity: [0.98, 1, 1, 1], scale: [0.98, 1.04, 1.02, 1], rotateZ: [0, -1, 0.5, 0] } : isSleeveCharging ? { y: [56, 48, 44, 46], opacity: 1, scale: [1, 1.012, 1.016, 1.012] } : { y: 56, opacity: 0.98, scale: 0.98, rotateZ: 0 }}
+                    transition={{ duration: 0.72, delay: isSleeveOpening ? 0.08 : 0, ease: [0.18, 0.84, 0.32, 1] }}
                   >
                     <img src="/card-back.png" alt="deck" className="deck-back" />
                   </motion.div>
                 </div>
-                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: [0, -164, -188], rotateZ: [0, 8, 16], y: [0, -18, -64], scale: [1, 1.04, 1.06], opacity: [1, 1, 0.3] } : { rotateX: 0, rotateZ: 0, y: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.56, ease: [0.34, 1.56, 0.64, 1] }} />
-                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.15, 1.16, 1], opacity: [0.4, 1, 0.96], y: [0, -2, 0] } : { scaleX: 0.2, opacity: 0.55, y: 0 }} transition={{ duration: 0.34, delay: isSleeveOpening ? 0.06 : 0, ease: 'easeOut' }} />
-                <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '130%'], opacity: [0, 0.85, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.58, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
+                <motion.div className="sleeve-flap" animate={isSleeveOpening ? { rotateX: [0, -128, -196, -214], rotateZ: [0, 12, 22, 28], y: [0, -20, -62, -92], x: [0, 4, 8, 14], scale: [1, 1.05, 1.08, 1.09], opacity: [1, 1, 0.56, 0.18] } : { rotateX: 0, rotateZ: 0, y: 0, x: 0, scale: 1, opacity: 1 }} transition={{ duration: 0.68, ease: [0.34, 1.56, 0.64, 1] }} />
+                <motion.div className="sleeve-rip" animate={isSleeveOpening ? { scaleX: [0.12, 1.24, 1.08, 0.94], opacity: [0.24, 1, 0.92, 0.75], y: [0, -3, -1, 0], rotate: [0, -1.5, 1, 0] } : { scaleX: 0.2, opacity: 0.55, y: 0, rotate: 0 }} transition={{ duration: 0.44, delay: isSleeveOpening ? 0.06 : 0, ease: 'easeOut' }} />
+                <motion.div className="sleeve-foil-sheen" animate={isSleeveOpening ? { x: ['-120%', '36%', '160%'], opacity: [0, 0.95, 0] } : { x: '-120%', opacity: 0 }} transition={{ duration: 0.64, delay: isSleeveOpening ? 0.08 : 0, ease: 'easeOut' }} />
                 <motion.div
                   className="sleeve-mouth-cover"
                   animate={isSleeveOpening ? { opacity: 0, y: -8 } : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.22, delay: isSleeveOpening ? 0.14 : 0 }}
+                  transition={{ duration: 0.26, delay: isSleeveOpening ? 0.16 : 0 }}
                 />
                 <div className="sleeve-body">
                   {setLogo
