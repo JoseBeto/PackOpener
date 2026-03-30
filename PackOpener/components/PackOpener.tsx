@@ -210,7 +210,6 @@ export default function RipRealmApp() {
   const [summaryNetCount, setSummaryNetCount] = useState(0)
   const [achievementToasts, setAchievementToasts] = useState<AchievementToast[]>([])
   const [coinFlyBursts, setCoinFlyBursts] = useState<CoinFlyBurst[]>([])
-  const openerWrapRef = useRef<HTMLDivElement | null>(null)
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const sleeveSectionRef = useRef<HTMLElement | null>(null)
   const suppressClickRef = useRef(false)
@@ -577,7 +576,6 @@ export default function RipRealmApp() {
     setCoinDisplayLock(false)
     if (typeof window !== 'undefined') {
       window.requestAnimationFrame(() => {
-        openerWrapRef.current?.scrollTo({ top: 0, behavior: 'auto' })
         window.scrollTo({ top: 0, behavior: 'auto' })
       })
     }
@@ -1364,7 +1362,7 @@ export default function RipRealmApp() {
   }
 
   return (
-    <div ref={openerWrapRef} className={`pack-opener-wrap is-${view}-view ${isMobilePackDetailsOpen ? 'is-pack-details-open' : ''} ${shouldCollapseText ? 'compact-ui' : ''}`}>
+    <div className={`pack-opener-wrap is-${view}-view ${isMobilePackDetailsOpen ? 'is-pack-details-open' : ''} ${shouldCollapseText ? 'compact-ui' : ''}`}>
       {view === 'select' && (
         <section className="flow-shell landing-shell premium-stage premium-stage-select">
           <div className="stage-spotlight stage-spotlight-left" />

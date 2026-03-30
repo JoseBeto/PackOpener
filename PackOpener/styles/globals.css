@@ -736,12 +736,12 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow:hidden}
 
   /* Keep details-open scrolling tight: vertical only, no horizontal drift. */
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:calc(88px + var(--safe-bottom))}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:100%;overflow:visible}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(88px + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:0;overflow:visible}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:visible}
 
   /* Summary must remain scrollable; clip accidental horizontal drift only. */
-  .app-home .pack-opener-wrap.is-summary-view{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;padding-bottom:calc(88px + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(88px + var(--safe-bottom))}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
   .field-label-packtype{order:-1;position:static}

@@ -120,10 +120,11 @@ export default function MissionsPage() {
           >
             {progression?.daily.checkInClaimed ? 'Claimed for today' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
           </button>
-          <div className="daily-checkin-note">
-            {progression?.daily.checkInClaimed ? 'Next check-in in ' : 'Daily reset in '}
-            <strong>{formatCountdown(msUntilDailyReset)}</strong>
-          </div>
+          {progression?.daily.checkInClaimed ? (
+            <div className="daily-checkin-note">
+              Next check-in in <strong>{formatCountdown(msUntilDailyReset)}</strong>
+            </div>
+          ) : null}
           {checkInMessage ? <div className="daily-checkin-note">{checkInMessage}</div> : null}
         </div>
 
