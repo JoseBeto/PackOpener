@@ -744,23 +744,23 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .landing-shell{gap:10px;min-height:0}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow:hidden}
 
-  /* Keep details-open scrolling tight: vertical only, no horizontal drift. */
+  /* Keep details-open non-scrollable: vertical only on page level, no inner modal scroll */
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(72px + var(--safe-bottom));width:100%;box-sizing:border-box}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .flow-shell,
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .premium-stage,
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .premium-stage-select{min-height:auto;max-height:none;overflow-y:visible;overflow-x:hidden}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:0;overflow-y:visible;overflow-x:hidden;width:100%;max-height:none}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .premium-stage-select{min-height:auto;max-height:none;overflow:hidden}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:0;overflow:hidden;width:100%;max-height:none}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-grid{grid-template-columns:1fr;width:100%}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow-y:visible;overflow-x:hidden;max-height:none}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .set-card-grid{max-height:none;overflow:visible}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:hidden;max-height:none}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .set-card-grid{max-height:none;overflow:hidden}
 
-  /* Summary must remain scrollable; clip accidental horizontal drift only. */
+  /* Summary: prevent all inner scrolling, force page-level scroll only */
   .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(80px + var(--safe-bottom));overflow-anchor:none;width:100%;box-sizing:border-box;scroll-behavior:auto}
   .app-home .pack-opener-wrap.is-summary-view .flow-shell,
   .app-home .pack-opener-wrap.is-summary-view .premium-stage,
-  .app-home .pack-opener-wrap.is-summary-view .premium-stage-summary{min-height:auto;max-height:none;overflow-y:visible;overflow-x:hidden}
-  .app-home .pack-opener-wrap.is-summary-view .summary-view-shell{height:auto;min-height:0;max-height:none;overflow-y:visible;overflow-x:hidden}
-  .app-home .pack-opener-wrap.is-summary-view .opened-cards-wrap{overflow-y:visible;overflow-x:hidden;max-height:none}
+  .app-home .pack-opener-wrap.is-summary-view .premium-stage-summary{min-height:auto;max-height:none;overflow:hidden}
+  .app-home .pack-opener-wrap.is-summary-view .summary-view-shell{height:auto;min-height:0;max-height:none;overflow:hidden}
+  .app-home .pack-opener-wrap.is-summary-view .opened-cards-wrap{overflow:hidden;max-height:none}
   body.flow-scroll-mobile{scroll-behavior:auto}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
