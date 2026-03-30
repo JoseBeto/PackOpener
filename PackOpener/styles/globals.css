@@ -20,6 +20,7 @@ body{margin:0;background:radial-gradient(1400px 860px at 50% -12%, #26508f 0%, #
 body::before{content:'';position:fixed;inset:-22%;pointer-events:none;z-index:-1;background:radial-gradient(42% 36% at 18% 22%, rgba(80,216,255,0.24), transparent 72%),radial-gradient(38% 34% at 82% 16%, rgba(166,108,255,0.24), transparent 74%),radial-gradient(38% 40% at 50% 82%, rgba(44,231,255,0.2), transparent 76%);filter:blur(18px);animation:auroraDrift 18s ease-in-out infinite alternate}
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:radial-gradient(rgba(255,255,255,0.12) 0.6px, transparent 0.6px);background-size:3px 3px;opacity:.08;mix-blend-mode:screen;animation:grainShift 8s steps(8) infinite}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+html.flow-scroll-mobile,html.lock-select-scroll{scroll-behavior:auto}
 html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;overscroll-behavior:none}
 body.lock-select-scroll #__next{height:100%;overflow:hidden}
 html.flow-scroll-mobile,body.flow-scroll-mobile{height:auto;overflow:visible;overscroll-behavior:auto}
@@ -718,10 +719,10 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .app-nav-dock{bottom:8px;width:calc(100vw - 14px);grid-template-columns:1fr 1.18fr 1fr;padding:7px}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
-  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow-y:visible;overflow-x:hidden;overscroll-behavior:none}
+  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow-y:visible;overflow-x:hidden;overscroll-behavior:none;width:100%;box-sizing:border-box}
   body.flow-scroll-mobile .app-home .site-main{overflow:visible;overflow-anchor:none;align-items:stretch}
-  body.flow-scroll-mobile .app-home .riprealm-page{display:block;min-height:auto}
-  body.flow-scroll-mobile .app-home .riprealm-host{display:block;flex:0 0 auto;min-height:auto}
+  body.flow-scroll-mobile .app-home .riprealm-page{display:block;min-height:auto;overflow-x:hidden;width:100%;box-sizing:border-box}
+  body.flow-scroll-mobile .app-home .riprealm-host{display:block;flex:0 0 auto;min-height:auto;overflow-x:hidden;width:100%}
   body.flow-scroll-mobile .app-home .riprealm-host .pack-opener-wrap{flex:0 0 auto;min-height:auto}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
   .app-home .riprealm-page{display:flex;flex-direction:column;min-height:0}
@@ -731,6 +732,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .riprealm-host{margin-top:8px;flex:1;display:flex;min-height:0}
   .riprealm-host .pack-opener-wrap{flex:1;min-height:0}
   .pack-opener-wrap{gap:10px}
+  .app-home .pack-opener-wrap{overflow-x:hidden;width:100%}
   .app-home .pack-opener-wrap.is-summary-view{overflow-x:hidden}
   .app-home .pack-opener-wrap.is-select-view,.app-home .pack-opener-wrap.is-opening-view{height:100%;overflow:hidden}
   .app-home .pack-opener-wrap.is-sleeve-view{height:100%;overflow:hidden}
@@ -748,7 +750,8 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:visible}
 
   /* Summary must remain scrollable; clip accidental horizontal drift only. */
-  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow:visible;padding-bottom:calc(80px + var(--safe-bottom));overflow-anchor:none;width:100%;box-sizing:border-box}
+  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-x:hidden;overflow-y:visible;padding-bottom:calc(80px + var(--safe-bottom));overflow-anchor:none;width:100%;box-sizing:border-box;scroll-behavior:auto}
+  body.flow-scroll-mobile{scroll-behavior:auto}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
   .field-label-packtype{order:-1;position:static}
@@ -788,7 +791,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .selected-pack-art{min-height:132px}
   .selected-pack-sleeve{width:120px;height:150px}
   .sleeve-view-shell{overflow:hidden}
-  .summary-view-shell{overflow-x:hidden;overflow-y:visible;overflow-anchor:none}
+  .summary-view-shell{overflow-x:hidden;overflow-y:visible;overflow-anchor:none;width:100%;box-sizing:border-box}
   .sleeve-stage-wrap{gap:10px;min-height:0;justify-content:flex-start;padding-bottom:8px}
   .sleeve-copy h3{margin:8px 0 4px;font-size:1.02rem}
   .sleeve-copy p{font-size:.8rem;line-height:1.3;max-width:300px}

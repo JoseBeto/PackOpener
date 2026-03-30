@@ -277,8 +277,8 @@ export default function PackSelector({
     ) as HTMLElement | null
     
     if (activeButton) {
-      // Use scrollIntoView with block: 'nearest' to smooth scroll
-      activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+      // Scroll only vertically, avoid horizontal centering
+      activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [setId])
 
