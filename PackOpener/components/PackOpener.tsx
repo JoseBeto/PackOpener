@@ -20,6 +20,8 @@ import { getCardRankBySet, getSetFamily, getBallTypes, MAINLINE_LADDER_DISPLAY, 
 import { recordSessionPackOpen } from '../lib/sessionStats'
 import { getAchievements } from '../lib/achievements'
 
+const COIN_DISPLAY_LOCK_EVENT = 'rr:coin-display-lock'
+
 type FocusCard = {
   name: string
   image?: string
@@ -169,6 +171,7 @@ export default function RipRealmApp() {
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isRevealSuspense, setIsRevealSuspense] = useState(false)
   const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
+  const [isGodPackOpen, setIsGodPackOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isCompactMode, setIsCompactMode] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
@@ -270,6 +273,11 @@ export default function RipRealmApp() {
   }, [currentPack, currentPackNewFlags])
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
+
+  function setCoinDisplayLock(locked: boolean, value?: number) {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new CustomEvent(COIN_DISPLAY_LOCK_EVENT, { detail: { locked, value } }))
+  }
 
   function getPackOpeningTone(pack: Card[]): HighlightTone {
     let bestTone: HighlightTone = 'base'
@@ -453,6 +461,7 @@ export default function RipRealmApp() {
 
   useEffect(() => {
     if (view !== 'summary') return
+    setCoinDisplayLock(false)
     summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     sfxRef.current.summary()
   }, [view])
@@ -525,6 +534,7 @@ export default function RipRealmApp() {
 
   useEffect(() => {
     return () => {
+      setCoinDisplayLock(false)
       if (sleeveChargeTimeoutRef.current) window.clearTimeout(sleeveChargeTimeoutRef.current)
       if (sleeveChargeAccentTimeoutRef.current) window.clearTimeout(sleeveChargeAccentTimeoutRef.current)
       if (sleeveRipTimeoutRef.current) window.clearTimeout(sleeveRipTimeoutRef.current)
@@ -615,6 +625,19 @@ export default function RipRealmApp() {
         sfxRef.current.coinBurst(visibleCardReward, highlight.tone)
       }
       sfxRef.current.cardLand(highlight.tone === 'secret' ? 0.95 : highlight.tone === 'ultra' ? 0.82 : highlight.tone === 'holo' ? 0.64 : 0.5)
+
+      // Haptic feedback scales with rarity — every pull gets some physical feedback
+      if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
+        if (highlight.tone === 'secret') {
+          navigator.vibrate([26, 42, 24, 52, 28])
+        } else if (highlight.tone === 'ultra') {
+          navigator.vibrate([20, 34, 18])
+        } else if (highlight.tone === 'holo') {
+          navigator.vibrate([12, 8, 12])
+        } else {
+          navigator.vibrate([5])
+        }
+      }
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
         setIsSpotlightMoment(true)
@@ -784,6 +807,10 @@ export default function RipRealmApp() {
     setShowRevealHint(false)
     setIsTransitioning(false)
     setSwipeDirection(1)
+    setIsGodPackOpen(false)
+    if (nextView === 'select') {
+      setCoinDisplayLock(false)
+    }
     if (nextView === 'select') {
       pendingAchievementToastsRef.current = []
     }
@@ -836,13 +863,21 @@ export default function RipRealmApp() {
   }
 
   function preparePack() {
+    setCoinDisplayLock(true, progression.currency)
     const pack = buildPack()
-    if (!pack) return
+    if (!pack) {
+      setCoinDisplayLock(false)
+      return
+    }
 
     setHasInteracted(true)
     sfxRef.current.unlock()
     sfxRef.current.tap()
     preloadPackImages(pack)
+
+    // Detect god pack: every card is at least holo/rare tier (no base cards)
+    const packIsGodPack = pack.length >= 4 && pack.every(c => getHighlight(c, setId).tone !== 'base')
+    setIsGodPackOpen(packIsGodPack)
 
     setCurrentPack(pack)
     setRevealIndex(0)
@@ -887,6 +922,14 @@ export default function RipRealmApp() {
     setIsSleeveCharging(true)
     sfxRef.current.ripCharge(openingPower)
     sfxRef.current.packOpenAccent(openingTone)
+
+    // God pack: play triumphant fanfare + intense haptic at the moment of opening
+    if (isGodPackOpen) {
+      sfxRef.current.godPack()
+      if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
+        navigator.vibrate([40, 20, 30, 20, 60, 20, 30, 20, 80])
+      }
+    }
 
     sleeveChargeAccentTimeoutRef.current = window.setTimeout(() => {
       sfxRef.current.rustle()
@@ -1216,11 +1259,13 @@ export default function RipRealmApp() {
                 {isMuted ? 'Sound: Off' : 'Sound: On'}
               </button>
             </div>
-            <div className="flow-meta">{packTypeLabel} • {setDisplayName}</div>
-          </div>
-
-          <div className="sleeve-stage-wrap">
+            <div className="flow-meta">{packTypeLabel} • {setDisplayName}{isGodPackOpen ? ' • ⚡ GOD PACK' : ''}</div>
             <div className="sleeve-copy">
+              {isGodPackOpen && (
+                <div className="god-pack-badge" aria-label="God Pack">
+                  <span>⚡ GOD PACK ⚡</span>
+                </div>
+              )}
               <span className="landing-eyebrow">Sleeve loaded</span>
               <h3>Open the sleeve to reveal your deck</h3>
               {!shouldCollapseText && <p>Start from the left side and drag across the top seam to the right.</p>}
@@ -1378,7 +1423,7 @@ export default function RipRealmApp() {
                 {isMuted ? 'Sound: Off' : 'Sound: On'}
               </button>
             </div>
-            <div className="flow-meta">Card {revealIndex + 1} of {currentPack.length} • {remainingCards} left</div>
+            <div className="flow-meta">Card {revealIndex + 1} of {currentPack.length} • {remainingCards} left{isGodPackOpen ? ' • ⚡ GOD PACK' : ''}</div>
           </div>
 
           <div className="opening-stage">

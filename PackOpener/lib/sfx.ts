@@ -335,6 +335,19 @@ class PocketSfx {
     this.playTone({ frequency: 700, duration: 0.22, type: 'sine', volume: 0.035, delay: 0.16 })
     this.playTone({ frequency: 920, duration: 0.26, type: 'sine', volume: 0.024, delay: 0.22 })
   }
+
+  godPack() {
+    // Triumphant rising 4-note fanfare
+    this.playTone({ frequency: 440, duration: 0.14, type: 'triangle', volume: 0.04 })
+    this.playTone({ frequency: 588, duration: 0.18, type: 'triangle', volume: 0.042, delay: 0.10 })
+    this.playTone({ frequency: 784, duration: 0.2, type: 'triangle', volume: 0.044, delay: 0.21 })
+    this.playTone({ frequency: 1046, duration: 0.38, type: 'sine', volume: 0.038, delay: 0.33 })
+    // High shimmer tail
+    this.playTone({ frequency: 1320, frequencyEnd: 1640, duration: 0.28, type: 'sine', volume: 0.022, delay: 0.40 })
+    this.playNoise({ duration: 0.22, volume: 0.013, highpass: 3000, delay: 0.18 })
+    // Warm low chord under it
+    this.playTone({ frequency: 220, duration: 0.5, type: 'sine', volume: 0.016, delay: 0.12 })
+  }
 }
 
 let singleton: PocketSfx | null = null

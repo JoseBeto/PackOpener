@@ -57,7 +57,7 @@ export default function MissionsPage() {
     if (outcome.claimed) {
       setCheckInMessage(`Daily check-in claimed: +${formatCoins(outcome.reward)} coins.`)
     } else {
-      setCheckInMessage('Daily check-in already claimed. Come back tomorrow.')
+      setCheckInMessage('Check-in already claimed for this 12-hour window. Come back at the next reset.')
     }
   }
 
@@ -74,7 +74,7 @@ export default function MissionsPage() {
           </div>
           <div className="profile-economy-card">
             <span>Check-in Streak</span>
-            <strong>{formatCoins(progression?.stats.checkInStreak || 0)} days</strong>
+            <strong>{formatCoins(progression?.stats.checkInStreak || 0)} claims</strong>
           </div>
         </div>
 

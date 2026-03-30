@@ -334,7 +334,7 @@ export default function ProfilePage() {
             <div className="trainer-stat"><span>Lifetime Packs</span><strong>{formatCoins(progression?.stats.lifetimePacksOpened || 0)}</strong></div>
             <div className="trainer-stat"><span>Good Pulls</span><strong>{formatCoins(progression?.stats.lifetimeGoodPulls || 0)}</strong></div>
             <div className="trainer-stat"><span>Elite Pulls</span><strong>{formatCoins(progression?.stats.lifetimeElitePulls || 0)}</strong></div>
-            <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} days</strong></div>
+            <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} claims</strong></div>
             <div className="trainer-stat"><span>Session Packs</span><strong>{formatCoins(sessionStats?.packsOpened || 0)}</strong></div>
             <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatCoins(sessionStats?.netCoins || 0)}</strong></div>
           </div>
