@@ -22,8 +22,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;bac
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;overscroll-behavior:none}
 body.lock-select-scroll #__next{height:100%;overflow:hidden}
-html.flow-scroll-mobile,body.flow-scroll-mobile{height:100%;overflow:hidden;overscroll-behavior:none}
-body.flow-scroll-mobile #__next{height:100%;overflow:hidden}
+html.flow-scroll-mobile,body.flow-scroll-mobile{height:auto;overflow:visible;overscroll-behavior:auto}
+body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .button{position:relative;overflow:hidden;background:linear-gradient(135deg, #67e8ff 0%, #2ce7ff 38%, #a66cff 100%);color:#041a24;padding:12px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:900;letter-spacing:.01em;transition:transform .2s cubic-bezier(.22,.61,.36,1), filter .2s ease, box-shadow .2s ease;min-height:46px;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;box-shadow:0 12px 26px rgba(80,216,255,0.34)}
 .button::after{content:'';position:absolute;inset:-120% auto -120% -48%;width:46%;background:linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,.6), rgba(255,255,255,0));transform:translateX(-120%) rotate(8deg);transition:transform .7s ease;pointer-events:none}
 .button:hover:not(:disabled){transform:translateY(-2px) scale(1.01);filter:brightness(1.09) saturate(1.08);box-shadow:0 16px 34px rgba(80,216,255,0.42)}
@@ -719,7 +719,7 @@ body.flow-scroll-mobile #__next{height:100%;overflow:hidden}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
   .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow-y:visible;overflow-x:hidden;overscroll-behavior:none}
-  body.flow-scroll-mobile .app-home .site-main{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;overflow-anchor:none;align-items:stretch}
+  body.flow-scroll-mobile .app-home .site-main{overflow:visible;overflow-anchor:none;align-items:stretch}
   body.flow-scroll-mobile .app-home .riprealm-page{display:block;min-height:auto}
   body.flow-scroll-mobile .app-home .riprealm-host{display:block;flex:0 0 auto;min-height:auto}
   body.flow-scroll-mobile .app-home .riprealm-host .pack-opener-wrap{flex:0 0 auto;min-height:auto}

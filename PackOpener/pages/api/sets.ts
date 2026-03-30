@@ -133,22 +133,21 @@ function mapSetPayload(detail: any): { id: string; name: string; releaseDate?: s
   }
 }
 
-async function enrichSetsWithKnownMetadata(
+async function enrichSetsWithMetadata(
   sets: Array<{ id: string; name: string; releaseDate?: string; logo?: string }>,
 ): Promise<Array<{ id: string; name: string; releaseDate?: string; logo?: string }>> {
   if (!sets.length) return sets
 
-  const knownSetIds = new Set(listCachedSets())
   const targetIds = sets
+    .filter((set) => !set.releaseDate || !set.logo)
     .map((set) => set.id)
-    .filter((id) => knownSetIds.has(id))
 
   if (!targetIds.length) return sets
 
   const details = await fetchWithConcurrency(
     targetIds,
-    (id) => fetchWithCertBypass(`${API_ROOT}/sets/${id}`, 25000),
-    4,
+    (id) => fetchWithCertBypass(`${API_ROOT}/sets/${id}`, 20000),
+    8,
   )
 
   const metadataById = new Map<string, { name: string; releaseDate?: string; logo?: string }>()
@@ -226,8 +225,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         throw new Error('tcgdex returned no sets')
       }
 
-      // tcgdex /sets payload can omit releaseDate; enrich known local set IDs with per-set metadata.
-      sets = await enrichSetsWithKnownMetadata(sets)
+      // tcgdex /sets payload often omits releaseDate/logo; enrich from per-set metadata.
+      sets = await enrichSetsWithMetadata(sets)
       
       // Sort by release date, newest first
       sortSetsNewestFirst(sets)
