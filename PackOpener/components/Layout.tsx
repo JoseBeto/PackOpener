@@ -35,6 +35,19 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
   }, [router.pathname])
 
   useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const isHomeRoute = router.pathname === '/'
+    document.documentElement.classList.toggle('route-home', isHomeRoute)
+    document.body.classList.toggle('route-home', isHomeRoute)
+
+    return () => {
+      document.documentElement.classList.remove('route-home')
+      document.body.classList.remove('route-home')
+    }
+  }, [router.pathname])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
 
     const handleCoinDisplayLock = (event: Event) => {
