@@ -402,7 +402,7 @@ export default function RipRealmApp() {
 
     const mediaQuery = window.matchMedia('(max-width: 640px)')
     const applyScrollLock = () => {
-      const shouldLock = view === 'select' && mediaQuery.matches
+      const shouldLock = (view === 'select' || view === 'sleeve' || view === 'opening') && mediaQuery.matches
       document.documentElement.classList.toggle('lock-select-scroll', shouldLock)
       document.body.classList.toggle('lock-select-scroll', shouldLock)
     }
