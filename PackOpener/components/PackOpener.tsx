@@ -404,8 +404,11 @@ export default function RipRealmApp() {
     const mediaQuery = window.matchMedia('(max-width: 640px)')
     const applyScrollLock = () => {
       const shouldLock = ((view === 'select' && !isMobilePackDetailsOpen) || view === 'sleeve' || view === 'opening') && mediaQuery.matches
+      const shouldUseFlowScroll = (view === 'summary' || (view === 'select' && isMobilePackDetailsOpen)) && mediaQuery.matches
       document.documentElement.classList.toggle('lock-select-scroll', shouldLock)
       document.body.classList.toggle('lock-select-scroll', shouldLock)
+      document.documentElement.classList.toggle('flow-scroll-mobile', shouldUseFlowScroll)
+      document.body.classList.toggle('flow-scroll-mobile', shouldUseFlowScroll)
     }
 
     applyScrollLock()
@@ -424,6 +427,8 @@ export default function RipRealmApp() {
       }
       document.documentElement.classList.remove('lock-select-scroll')
       document.body.classList.remove('lock-select-scroll')
+      document.documentElement.classList.remove('flow-scroll-mobile')
+      document.body.classList.remove('flow-scroll-mobile')
     }
   }, [view, isMobilePackDetailsOpen])
 

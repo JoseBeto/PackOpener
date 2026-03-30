@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getSetsFromCacheWithMeta, listCachedSets, setSetsCache } from '../../lib/cacheManager'
 import https from 'https'
+import fs from 'fs'
+import path from 'path'
 
 // Disable SSL certificate verification for development
 if (process.env.NODE_ENV === 'development') {
@@ -39,6 +41,22 @@ function sortSetsNewestFirst<T extends { id: string; name: string; releaseDate?:
   })
 }
 
+async function fetchWithConcurrency<T>(
+  items: string[],
+  fetchFn: (item: string) => Promise<T>,
+  concurrency: number = 4,
+): Promise<T[]> {
+  const results: T[] = []
+  for (let i = 0; i < items.length; i += concurrency) {
+    const batch = items.slice(i, i + concurrency)
+    const batchResults = await Promise.allSettled(batch.map(fetchFn))
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled') results.push(result.value)
+    }
+  }
+  return results
+}
+
 // Create an HTTPS request helper that bypasses certificate verification
 function fetchWithCertBypass(url: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -58,7 +76,7 @@ function fetchWithCertBypass(url: string): Promise<any> {
       })
     })
     request.on('error', reject)
-    request.setTimeout(30000, () => {
+    request.setTimeout(90000, () => {
       request.destroy()
       reject(new Error('Request timeout'))
     })
@@ -73,11 +91,46 @@ const FILE_CACHE_TTL = 1000 * 60 * 30 // 30 minutes
 // Empty fallback - forces fresh fetch from tcgdex on every error
 const FALLBACK_SETS: Array<{ id: string; name: string }> = []
 
+function getDetailedCardsSetNameMap(): Map<string, string> {
+  const map = new Map<string, string>()
+  const dir = path.join(process.cwd(), 'data', 'detailed-cards')
+  try {
+    if (!fs.existsSync(dir)) return map
+    const files = fs.readdirSync(dir).filter((name) => name.endsWith('-cards.json') && name !== 'all-cards-detailed.json')
+    for (const file of files) {
+      const filepath = path.join(dir, file)
+      const raw = fs.readFileSync(filepath, 'utf-8')
+      const parsed = JSON.parse(raw)
+      if (typeof parsed?.setId === 'string' && typeof parsed?.setName === 'string' && parsed.setName.trim()) {
+        map.set(parsed.setId, parsed.setName)
+      }
+    }
+  } catch (error) {
+    console.log(`[Sets] Failed to read detailed set names: ${(error as Error).message}`)
+  }
+  return map
+}
+
 function deriveSetsFromCardCache(): Array<{ id: string; name: string; releaseDate?: string; logo?: string }> {
   const ids = listCachedSets()
+  const setNameMap = getDetailedCardsSetNameMap()
   return ids
-    .map((id) => ({ id, name: id.toUpperCase() }))
+    .map((id) => ({ id, name: setNameMap.get(id) || id.toUpperCase() }))
     .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function mapSetPayload(detail: any): { id: string; name: string; releaseDate?: string; logo?: string } | null {
+  const id = typeof detail?.id === 'string' ? detail.id : ''
+  const name = typeof detail?.name === 'string' && detail.name.trim() ? detail.name : id.toUpperCase()
+  if (!id || !name) return null
+  const releaseDate = typeof detail?.releaseDate === 'string' ? detail.releaseDate : undefined
+  const logo = detail?.logo ? `${detail.logo}.png` : undefined
+  return {
+    id,
+    name,
+    releaseDate,
+    ...(logo && { logo }),
+  }
 }
 
 
@@ -121,19 +174,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const data = await fetchWithCertBypass(url)
       const sets = (Array.isArray(data) ? data : [])
-        .map((detail: any) => {
-          const id = typeof detail?.id === 'string' ? detail.id : ''
-          const name = typeof detail?.name === 'string' && detail.name.trim() ? detail.name : id.toUpperCase()
-          const releaseDate = typeof detail?.releaseDate === 'string' ? detail.releaseDate : undefined
-          const logo = detail?.logo ? `${detail.logo}.png` : undefined
-          return {
-            id,
-            name,
-            releaseDate,
-            ...(logo && { logo }),
-          }
-        })
-        .filter((set) => Boolean(set.id) && Boolean(set.name))
+        .map(mapSetPayload)
+        .filter((set): set is NonNullable<typeof set> => Boolean(set))
 
       console.log(`[Sets] ✓ Fetched ${sets.length} sets from tcgdex.net`)
 
@@ -160,6 +202,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log(`[Sets] Returning stale cache (${staleCacheSets.length} sets) after fetch failure`)
       inMemoryCache = { ts: Date.now(), sets: staleCacheSets }
       return res.status(200).json({ count: staleCacheSets.length, sets: staleCacheSets, source: 'stale-file-cache', error: err.message })
+    }
+
+    // Try lightweight per-set metadata fetch for known local set IDs.
+    const knownSetIds = [...new Set(listCachedSets())]
+    if (knownSetIds.length > 0) {
+      try {
+        const details = await fetchWithConcurrency(
+          knownSetIds,
+          (id) => fetchWithCertBypass(`${API_ROOT}/sets/${id}`),
+          4,
+        )
+        const knownSets = details
+          .map(mapSetPayload)
+          .filter((set): set is NonNullable<typeof set> => Boolean(set))
+
+        if (knownSets.length > 0) {
+          sortSetsNewestFirst(knownSets)
+          inMemoryCache = { ts: Date.now(), sets: knownSets }
+          console.log(`[Sets] Returning ${knownSets.length} known sets from per-set metadata fetch`)
+          return res.status(200).json({ count: knownSets.length, sets: knownSets, source: 'known-sets-metadata-fallback', error: err.message })
+        }
+      } catch (knownSetErr: any) {
+        console.log(`[Sets] Known-set metadata fallback failed: ${knownSetErr.message}`)
+      }
     }
 
     const derivedFallbackSets = deriveSetsFromCardCache()
