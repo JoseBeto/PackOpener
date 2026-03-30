@@ -33,7 +33,7 @@ class PocketSfx {
       this.masterCompressor.release.value = 0.15
 
       this.masterGain = context.createGain()
-      this.masterGain.gain.value = 0.76
+      this.masterGain.gain.value = 1.08
 
       this.masterCompressor.connect(this.masterGain)
       this.masterGain.connect(context.destination)
@@ -327,6 +327,24 @@ class PocketSfx {
     this.playTone({ frequency: 880, duration: 0.26, type: 'sine', volume: 0.023, delay: 0.11 })
     this.playTone({ frequency: 1180, duration: 0.22, type: 'triangle', volume: 0.015, delay: 0.17 })
     this.playNoise({ duration: 0.2, volume: 0.013, highpass: 2200, delay: 0.05 })
+  }
+
+  jackpotImpact(tone: HighlightTone) {
+    if (tone !== 'ultra' && tone !== 'secret') return
+
+    if (tone === 'ultra') {
+      this.playTone({ frequency: 240, frequencyEnd: 138, duration: 0.22, type: 'sawtooth', volume: 0.02 })
+      this.playTone({ frequency: 820, frequencyEnd: 1180, duration: 0.2, type: 'triangle', volume: 0.018, delay: 0.07 })
+      this.playTone({ frequency: 1260, frequencyEnd: 980, duration: 0.18, type: 'sine', volume: 0.012, delay: 0.14 })
+      this.playNoise({ duration: 0.14, volume: 0.011, highpass: 2400, delay: 0.05 })
+      return
+    }
+
+    this.playTone({ frequency: 210, frequencyEnd: 118, duration: 0.28, type: 'sawtooth', volume: 0.024 })
+    this.playTone({ frequency: 740, frequencyEnd: 1160, duration: 0.24, type: 'triangle', volume: 0.022, delay: 0.05 })
+    this.playTone({ frequency: 1120, frequencyEnd: 1640, duration: 0.3, type: 'sine', volume: 0.018, delay: 0.12 })
+    this.playTone({ frequency: 1860, frequencyEnd: 1420, duration: 0.2, type: 'sine', volume: 0.011, delay: 0.18 })
+    this.playNoise({ duration: 0.18, volume: 0.014, highpass: 2300, delay: 0.04 })
   }
 
   summary() {

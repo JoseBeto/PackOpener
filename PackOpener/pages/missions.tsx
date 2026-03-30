@@ -26,6 +26,7 @@ export default function MissionsPage() {
   const [progression, setProgression] = useState<ProgressionState | null>(null)
   const [checkInMessage, setCheckInMessage] = useState('')
   const [msUntilReset, setMsUntilReset] = useState(() => getMsUntilNextDailyReset())
+  const [checkInToasts, setCheckInToasts] = useState<Array<{ id: string; title: string; description: string; tone: 'mission' | 'neutral' }>>([])
 
   useEffect(() => {
     setProgression(loadProgressionState())
@@ -38,6 +39,18 @@ export default function MissionsPage() {
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    if (!checkInToasts.length) return
+    const timers = checkInToasts.map((toast) =>
+      window.setTimeout(() => {
+        setCheckInToasts((prev) => prev.filter((item) => item.id !== toast.id))
+      }, 3600),
+    )
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [checkInToasts])
+
   const missionStatuses = useMemo(() => {
     if (!progression) return { daily: [], weekly: [] as ReturnType<typeof getMissionStatuses>['weekly'] }
     return getMissionStatuses(progression)
@@ -49,9 +62,29 @@ export default function MissionsPage() {
     saveProgressionState(outcome.nextState)
     setProgression(outcome.nextState)
     if (outcome.claimed) {
-      setCheckInMessage(`Daily check-in claimed: +${formatCoins(outcome.reward)} coins.`)
+      const message = `Daily check-in claimed: +${formatCoins(outcome.reward)} coins.`
+      setCheckInMessage(message)
+      setCheckInToasts((prev) => [
+        ...prev,
+        {
+          id: `daily-claim-${Date.now()}`,
+          title: 'Daily Check-in Claimed',
+          description: `+${formatCoins(outcome.reward)} coins added to your balance.`,
+          tone: 'mission',
+        },
+      ])
     } else {
-      setCheckInMessage('Check-in already claimed for this 12-hour window. Come back at the next reset.')
+      const message = 'Check-in already claimed for this 12-hour window. Come back at the next reset.'
+      setCheckInMessage(message)
+      setCheckInToasts((prev) => [
+        ...prev,
+        {
+          id: `daily-already-${Date.now()}`,
+          title: 'Already Claimed',
+          description: message,
+          tone: 'neutral',
+        },
+      ])
     }
   }
 
@@ -123,6 +156,18 @@ export default function MissionsPage() {
           })}
         </div>
       </section>
+
+      <div className="achievement-toast-stack" aria-live="polite" aria-label="Daily check-in notifications">
+        {checkInToasts.map((toast) => (
+          <div key={toast.id} className={`achievement-toast ${toast.tone === 'mission' ? 'is-mission' : ''}`}>
+            <span className={`achievement-toast-tag ${toast.tone === 'mission' ? 'is-mission' : ''}`}>
+              {toast.tone === 'mission' ? 'Daily Reward' : 'Daily Check-in'}
+            </span>
+            <strong>{toast.title}</strong>
+            <p>{toast.description}</p>
+          </div>
+        ))}
+      </div>
     </Layout>
   )
 }

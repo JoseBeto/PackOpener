@@ -237,9 +237,12 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
     }
   }, [])
 
-  // Scroll the carousel to show the selected set
+  // Keep selected set visible on compact/mobile tile rails without shifting desktop viewport.
   useEffect(() => {
     if (typeof window === 'undefined' || !setTileGridRef.current) return
+
+    const isCompactViewport = window.matchMedia('(max-width: 640px)').matches
+    if (!isCompactViewport) return
     
     // Find the active set tile button
     const activeButton = setTileGridRef.current.querySelector(

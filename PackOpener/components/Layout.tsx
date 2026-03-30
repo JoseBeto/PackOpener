@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -16,6 +16,8 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
   const router = useRouter()
   const [progression, setProgression] = useState<ProgressionState | null>(null)
   const [coinDisplayOverride, setCoinDisplayOverride] = useState<number | null>(null)
+  const [coinPulseTone, setCoinPulseTone] = useState<'ultra' | 'secret' | null>(null)
+  const coinPulseTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -36,10 +38,11 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
     if (typeof window === 'undefined') return
 
     const handleCoinDisplayLock = (event: Event) => {
-      const customEvent = event as CustomEvent<{ locked?: boolean; value?: number }>
+      const customEvent = event as CustomEvent<{ locked?: boolean; value?: number; pulse?: boolean; tone?: 'ultra' | 'secret' | 'holo' | 'base' }>
       const locked = Boolean(customEvent.detail?.locked)
       if (!locked) {
         setCoinDisplayOverride(null)
+        setCoinPulseTone(null)
         return
       }
 
@@ -47,10 +50,25 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
       if (typeof value === 'number' && Number.isFinite(value)) {
         setCoinDisplayOverride(Math.max(0, Math.floor(value)))
       }
+
+      if (customEvent.detail?.pulse && (customEvent.detail?.tone === 'ultra' || customEvent.detail?.tone === 'secret')) {
+        setCoinPulseTone(customEvent.detail.tone)
+        if (coinPulseTimerRef.current) {
+          window.clearTimeout(coinPulseTimerRef.current)
+        }
+        coinPulseTimerRef.current = window.setTimeout(() => {
+          setCoinPulseTone(null)
+          coinPulseTimerRef.current = null
+        }, customEvent.detail.tone === 'secret' ? 820 : 620)
+      }
     }
 
     window.addEventListener(COIN_DISPLAY_LOCK_EVENT, handleCoinDisplayLock as EventListener)
     return () => {
+      if (coinPulseTimerRef.current) {
+        window.clearTimeout(coinPulseTimerRef.current)
+        coinPulseTimerRef.current = null
+      }
       window.removeEventListener(COIN_DISPLAY_LOCK_EVENT, handleCoinDisplayLock as EventListener)
     }
   }, [])
@@ -68,7 +86,7 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
       <div className={`app ${router.pathname === '/' ? 'app-home' : ''}`}>
         <header className="site-header">
           <Link href="/" className="brand">Rip Realm</Link>
-          <div className="header-quick-coins" aria-label="Current coins">
+          <div className={`header-quick-coins ${coinPulseTone ? `is-pulse-${coinPulseTone}` : ''}`} aria-label="Current coins">
             <span>Coins</span>
             <strong>{formatCoins(coinDisplayOverride ?? progression?.currency ?? 0)}</strong>
           </div>

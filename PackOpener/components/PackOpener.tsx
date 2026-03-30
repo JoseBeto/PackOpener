@@ -193,6 +193,7 @@ export default function RipRealmApp() {
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isRevealSuspense, setIsRevealSuspense] = useState(false)
   const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
+  const [isJackpotSettling, setIsJackpotSettling] = useState(false)
   const [isGodPackOpen, setIsGodPackOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isCompactMode, setIsCompactMode] = useState(false)
@@ -223,12 +224,12 @@ export default function RipRealmApp() {
   const sleeveOpenTimeoutRef = useRef<number | null>(null)
   const flipTimeoutRef = useRef<number | null>(null)
   const spotlightTimeoutRef = useRef<number | null>(null)
+  const jackpotSettleTimeoutRef = useRef<number | null>(null)
   const revealHintTimeoutRef = useRef<number | null>(null)
   const poolRequestSeqRef = useRef(0)
   const poolAbortRef = useRef<AbortController | null>(null)
   const sfxRef = useRef(getSfxEngine())
   const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
-  const pendingAchievementToastsRef = useRef<AchievementToast[]>([])
   const coinPreviewRef = useRef<number | null>(null)
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
@@ -298,9 +299,9 @@ export default function RipRealmApp() {
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
 
-  function setCoinDisplayLock(locked: boolean, value?: number) {
+  function setCoinDisplayLock(locked: boolean, value?: number, options?: { pulse?: boolean; tone?: HighlightTone }) {
     if (typeof window === 'undefined') return
-    window.dispatchEvent(new CustomEvent(COIN_DISPLAY_LOCK_EVENT, { detail: { locked, value } }))
+    window.dispatchEvent(new CustomEvent(COIN_DISPLAY_LOCK_EVENT, { detail: { locked, value, pulse: Boolean(options?.pulse), tone: options?.tone } }))
   }
 
   function getPackOpeningTone(pack: Card[]): HighlightTone {
@@ -370,24 +371,21 @@ export default function RipRealmApp() {
     }
   }, [achievementToasts])
 
-  useEffect(() => {
-    if (view !== 'summary') return
-    if (!pendingAchievementToastsRef.current.length) return
-
-    const hasPendingMissionToast = pendingAchievementToastsRef.current.some((item) => item.tone === 'mission')
+  function enqueueAchievementToasts(toasts: AchievementToast[]) {
+    if (!toasts.length) return
 
     setAchievementToasts((prev) => {
       const existing = new Set(prev.map((item) => item.id))
-      const additions = pendingAchievementToastsRef.current.filter((item) => !existing.has(item.id))
+      const additions = toasts.filter((item) => !existing.has(item.id))
       return additions.length > 0 ? [...prev, ...additions] : prev
     })
-    pendingAchievementToastsRef.current = []
-    if (hasPendingMissionToast) {
+
+    if (toasts.some((item) => item.tone === 'mission')) {
       sfxRef.current.missionComplete()
     } else {
       sfxRef.current.rarity('holo')
     }
-  }, [view])
+  }
 
   function applyProgressionUpdate(nextState: ProgressionState, options?: { suppressToasts?: boolean }) {
     const unlockedNow = getAchievements(nextState).filter((item) => item.unlocked)
@@ -428,24 +426,7 @@ export default function RipRealmApp() {
       const newToasts = [...newlyUnlocked, ...newlyCompletedMissions]
 
       if (newToasts.length > 0) {
-        if (view === 'summary') {
-          setAchievementToasts((prev) => {
-            const existing = new Set(prev.map((item) => item.id))
-            const additions = newToasts.filter((item) => !existing.has(item.id))
-            return [...prev, ...additions]
-          })
-          if (newlyCompletedMissions.length > 0) {
-            sfxRef.current.missionComplete()
-          } else {
-            sfxRef.current.rarity('holo')
-          }
-        } else {
-          const existingPending = new Set(pendingAchievementToastsRef.current.map((item) => item.id))
-          const additions = newToasts.filter((item) => !existingPending.has(item.id))
-          if (additions.length > 0) {
-            pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
-          }
-        }
+        enqueueAchievementToasts(newToasts)
       }
     }
 
@@ -606,6 +587,7 @@ export default function RipRealmApp() {
       if (sleeveOpenTimeoutRef.current) window.clearTimeout(sleeveOpenTimeoutRef.current)
       if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
       if (spotlightTimeoutRef.current) window.clearTimeout(spotlightTimeoutRef.current)
+      if (jackpotSettleTimeoutRef.current) window.clearTimeout(jackpotSettleTimeoutRef.current)
     }
   }, [])
 
@@ -670,10 +652,15 @@ export default function RipRealmApp() {
       window.clearTimeout(spotlightTimeoutRef.current)
       spotlightTimeoutRef.current = null
     }
+    if (jackpotSettleTimeoutRef.current) {
+      window.clearTimeout(jackpotSettleTimeoutRef.current)
+      jackpotSettleTimeoutRef.current = null
+    }
 
     const highlight = getHighlight(visibleCard, setId)
     setIsCardFaceUp(false)
     setIsSpotlightMoment(false)
+    setIsJackpotSettling(false)
     setIsRevealSuspense(highlight.tone === 'secret' || highlight.tone === 'ultra')
     if (highlight.tone === 'secret' || highlight.tone === 'ultra') {
       sfxRef.current.drawSlide(highlight.tone === 'secret' ? 0.98 : 0.88)
@@ -709,14 +696,21 @@ export default function RipRealmApp() {
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
         setIsSpotlightMoment(true)
+        setIsJackpotSettling(false)
         sfxRef.current.whoosh()
         sfxRef.current.hitStinger(highlight.tone)
         sfxRef.current.hitRumble(highlight.tone)
+        sfxRef.current.jackpotImpact(highlight.tone)
         if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
           navigator.vibrate(highlight.tone === 'secret' ? [26, 42, 24, 52, 28] : [20, 34, 18])
         }
         spotlightTimeoutRef.current = window.setTimeout(() => {
           setIsSpotlightMoment(false)
+          setIsJackpotSettling(true)
+          jackpotSettleTimeoutRef.current = window.setTimeout(() => {
+            setIsJackpotSettling(false)
+            jackpotSettleTimeoutRef.current = null
+          }, highlight.tone === 'secret' ? 420 : 320)
           spotlightTimeoutRef.current = null
         }, highlight.tone === 'secret' ? 1360 : 1040)
       }
@@ -856,6 +850,10 @@ export default function RipRealmApp() {
       window.clearTimeout(spotlightTimeoutRef.current)
       spotlightTimeoutRef.current = null
     }
+    if (jackpotSettleTimeoutRef.current) {
+      window.clearTimeout(jackpotSettleTimeoutRef.current)
+      jackpotSettleTimeoutRef.current = null
+    }
     if (revealHintTimeoutRef.current) {
       window.clearTimeout(revealHintTimeoutRef.current)
       revealHintTimeoutRef.current = null
@@ -872,6 +870,7 @@ export default function RipRealmApp() {
     setIsCardFaceUp(false)
     setIsRevealSuspense(false)
     setIsSpotlightMoment(false)
+    setIsJackpotSettling(false)
     setShowRevealHint(false)
     setIsTransitioning(false)
     setSwipeDirection(1)
@@ -880,9 +879,6 @@ export default function RipRealmApp() {
     coinPreviewRef.current = null
     if (nextView === 'select') {
       setCoinDisplayLock(false)
-    }
-    if (nextView === 'select') {
-      pendingAchievementToastsRef.current = []
     }
   }
 
@@ -912,15 +908,15 @@ export default function RipRealmApp() {
     setCoinFlyBursts((prev) => [...prev, { id: burstId, amount, tone }])
     window.setTimeout(() => {
       setCoinFlyBursts((prev) => prev.filter((item) => item.id !== burstId))
-    }, 900)
+    }, 2300)
 
     const currentPreview = coinPreviewRef.current ?? progression.currency
     const nextPreview = currentPreview + amount
     coinPreviewRef.current = nextPreview
 
-    const flyDelay = tone === 'secret' || tone === 'ultra' ? 260 : 120
+    const flyDelay = tone === 'secret' ? 1040 : tone === 'ultra' ? 920 : tone === 'holo' ? 800 : 680
     window.setTimeout(() => {
-      setCoinDisplayLock(true, nextPreview)
+      setCoinDisplayLock(true, nextPreview, { pulse: tone === 'ultra' || tone === 'secret', tone })
       sfxRef.current.coinTick(tone === 'secret' ? 0.95 : tone === 'ultra' ? 0.82 : 0.65)
     }, flyDelay)
   }
@@ -962,16 +958,12 @@ export default function RipRealmApp() {
       const setName = setNames[setId] || setId.toUpperCase()
       const milestoneToasts: AchievementToast[] = milestoneOutcome.claimedThresholds.map((threshold) => ({
         id: `set-${setId}-${threshold}-${milestoneOutcome.nextState.stats.lifetimePacksOpened}`,
-        label: 'Set Milestone Chest',
+        label: 'Treasure Chest Unlocked',
         description: `${setName} ${threshold}% complete • +${formatCoins(getSetMilestoneReward(threshold))} coins`,
         tag: 'Collection Milestone',
         tone: 'mission',
       }))
-      const existingPending = new Set(pendingAchievementToastsRef.current.map((item) => item.id))
-      const additions = milestoneToasts.filter((item) => !existingPending.has(item.id))
-      if (additions.length > 0) {
-        pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
-      }
+      enqueueAchievementToasts(milestoneToasts)
     }
 
     applyProgressionUpdate(milestoneOutcome.nextState)
@@ -1503,7 +1495,7 @@ export default function RipRealmApp() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${isSpotlightMoment && isBigHitTone ? 'opening-big-hit' : ''} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${(isSpotlightMoment || isJackpotSettling) && isBigHitTone ? 'opening-big-hit opening-jackpot-v2 opening-jackpot-v21' : ''} ${isSpotlightMoment && isBigHitTone ? 'is-jackpot-focus' : ''} ${isJackpotSettling && isBigHitTone ? 'is-jackpot-settling' : ''} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
           <motion.div
             className={`reveal-tone-wash reveal-tone-${currentHighlight.tone}`}
             initial={false}
@@ -1522,6 +1514,8 @@ export default function RipRealmApp() {
               <div className="cinema-bar cinema-bar-bottom" />
               <div className={`jackpot-aura jackpot-aura-${currentHighlight.tone}`} />
               <div className={`jackpot-flash jackpot-flash-${currentHighlight.tone}`} />
+              <div className={`jackpot-v2-veil jackpot-v2-veil-${currentHighlight.tone}`} />
+              <div className={`jackpot-v2-beams jackpot-v2-beams-${currentHighlight.tone}`} />
               <div className={`jackpot-rings jackpot-rings-${currentHighlight.tone}`} aria-hidden="true">
                 <span />
                 <span />
@@ -1756,7 +1750,7 @@ export default function RipRealmApp() {
                     <strong>{bestPullHighlight.label || 'Base Pull'}</strong>
                   </div>
                   <div className="summary-ceremony-chip">
-                    <span>Side Quests</span>
+                    <span>Bonus Rewards</span>
                     <strong>+{lastPackEconomy.missionReward + lastPackEconomy.milestoneReward}</strong>
                   </div>
                   <div className="summary-ceremony-chip">
@@ -1772,11 +1766,21 @@ export default function RipRealmApp() {
                   <div className="summary-rarity-chip is-ultra">Ultra {summaryRarityBreakdown.ultra}</div>
                   <div className="summary-rarity-chip is-secret">Secret {summaryRarityBreakdown.secret}</div>
                 </div>
+                <div className="summary-bonus-breakdown">
+                  <div className="summary-bonus-pill">
+                    <span>Side Quests (Daily + Weekly)</span>
+                    <strong>+{formatCoins(lastPackEconomy.missionReward)}</strong>
+                  </div>
+                  <div className="summary-bonus-pill summary-bonus-pill-treasure">
+                    <span>Treasure Chest (Set Milestone)</span>
+                    <strong>+{formatCoins(lastPackEconomy.milestoneReward)}</strong>
+                  </div>
+                </div>
                 <div className="summary-new-row">
                   <span>New Spotlight</span>
                   <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
                   {lastPackEconomy.milestoneReward > 0 && (
-                    <strong>Set milestone chest: +{formatCoins(lastPackEconomy.milestoneReward)} coins</strong>
+                    <strong>Treasure chest unlocked: +{formatCoins(lastPackEconomy.milestoneReward)} coins</strong>
                   )}
                 </div>
               </motion.div>
@@ -1913,12 +1917,19 @@ export default function RipRealmApp() {
           <motion.div
             key={burst.id}
             className={`coin-fly-burst coin-fly-${burst.tone}`}
-            initial={{ opacity: 0, x: 0, y: 0, scale: 0.9 }}
-            animate={{ opacity: [0, 1, 1, 0], x: 340, y: -350, scale: [0.9, 1.04, 0.86, 0.7] }}
+            initial={{ opacity: 0, x: 0, y: 8, scale: 0.62, rotate: -5 }}
+            animate={{ opacity: [0, 1, 1, 0.96, 0], x: [0, 70, 200, 320, 430], y: [8, -44, -128, -236, -350], scale: [0.62, 1.44, 1.3, 1.1, 1], rotate: [-5, -1, 2, 0, 0] }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.88, ease: [0.2, 0.9, 0.25, 1] }}
+            transition={{ duration: 2.08, ease: [0.16, 0.86, 0.24, 1] }}
           >
-            +{formatCoins(burst.amount)}
+            <span className="coin-fly-impact" aria-hidden="true" />
+            <span className="coin-fly-trail" aria-hidden="true" />
+            <span className="coin-fly-spark coin-fly-spark-a" aria-hidden="true" />
+            <span className="coin-fly-spark coin-fly-spark-b" aria-hidden="true" />
+            <span className="coin-fly-spark coin-fly-spark-c" aria-hidden="true" />
+            <span className="coin-fly-spark coin-fly-spark-d" aria-hidden="true" />
+            <span className="coin-fly-spark coin-fly-spark-e" aria-hidden="true" />
+            <span className="coin-fly-label">+{formatCoins(burst.amount)}</span>
           </motion.div>
         ))}
       </AnimatePresence>
