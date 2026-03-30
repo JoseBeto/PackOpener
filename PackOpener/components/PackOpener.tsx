@@ -236,6 +236,7 @@ export default function RipRealmApp() {
   const poolAbortRef = useRef<AbortController | null>(null)
   const sfxRef = useRef(getSfxEngine())
   const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
+  const pendingAchievementToastsRef = useRef<AchievementToast[]>([])
   const coinPreviewRef = useRef<number | null>(null)
   const openingRewardRef = useRef<HTMLDivElement | null>(null)
   const dragX = useMotionValue(0)
@@ -460,6 +461,25 @@ export default function RipRealmApp() {
     }
   }
 
+  function queueAchievementToastsForReveal(toasts: AchievementToast[]) {
+    if (!toasts.length) return
+
+    if (view === 'summary') {
+      enqueueAchievementToasts(toasts)
+      return
+    }
+
+    const existingIds = new Set([
+      ...pendingAchievementToastsRef.current.map((item) => item.id),
+      ...achievementToasts.map((item) => item.id),
+    ])
+
+    const additions = toasts.filter((item) => !existingIds.has(item.id))
+    if (additions.length > 0) {
+      pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
+    }
+  }
+
   function applyProgressionUpdate(nextState: ProgressionState, options?: { suppressToasts?: boolean }) {
     const unlockedNow = getAchievements(nextState).filter((item) => item.unlocked)
     const unlockedSet = new Set(unlockedNow.map((item) => item.id))
@@ -498,9 +518,7 @@ export default function RipRealmApp() {
 
       const newToasts = [...newlyUnlocked, ...newlyCompletedMissions]
 
-      if (newToasts.length > 0) {
-        enqueueAchievementToasts(newToasts)
-      }
+      if (newToasts.length > 0) queueAchievementToastsForReveal(newToasts)
     }
 
     unlockedAchievementIdsRef.current = unlockedSet
@@ -579,6 +597,11 @@ export default function RipRealmApp() {
   useEffect(() => {
     if (view !== 'summary') return
     setCoinDisplayLock(false)
+    if (pendingAchievementToastsRef.current.length > 0) {
+      const pending = pendingAchievementToastsRef.current
+      pendingAchievementToastsRef.current = []
+      enqueueAchievementToasts(pending)
+    }
     sfxRef.current.summary()
   }, [view])
 
@@ -1038,7 +1061,7 @@ export default function RipRealmApp() {
         tag: 'Collection Milestone',
         tone: 'mission',
       }))
-      enqueueAchievementToasts(milestoneToasts)
+      queueAchievementToastsForReveal(milestoneToasts)
     }
 
     applyProgressionUpdate(milestoneOutcome.nextState)

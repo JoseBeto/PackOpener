@@ -719,7 +719,10 @@ body.flow-scroll-mobile #__next{height:100%;overflow:hidden}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
   .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow-y:visible;overflow-x:hidden;overscroll-behavior:none}
-  body.flow-scroll-mobile .app-home .site-main{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+  body.flow-scroll-mobile .app-home .site-main{overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;overflow-anchor:none;align-items:stretch}
+  body.flow-scroll-mobile .app-home .riprealm-page{display:block;min-height:auto}
+  body.flow-scroll-mobile .app-home .riprealm-host{display:block;flex:0 0 auto;min-height:auto}
+  body.flow-scroll-mobile .app-home .riprealm-host .pack-opener-wrap{flex:0 0 auto;min-height:auto}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
   .app-home .riprealm-page{display:flex;flex-direction:column;min-height:0}
   .hero h1{font-size:1.15rem;margin:0 0 4px}
@@ -739,12 +742,12 @@ body.flow-scroll-mobile #__next{height:100%;overflow:hidden}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow:hidden}
 
   /* Keep details-open scrolling tight: vertical only, no horizontal drift. */
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:auto;overflow:visible;padding-bottom:calc(88px + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:auto;overflow:visible;padding-bottom:calc(128px + var(--safe-bottom))}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:0;overflow:visible}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:visible}
 
   /* Summary must remain scrollable; clip accidental horizontal drift only. */
-  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow:visible;padding-bottom:calc(104px + var(--safe-bottom));overflow-anchor:none}
+  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow:visible;padding-bottom:calc(144px + var(--safe-bottom));overflow-anchor:none}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
   .field-label-packtype{order:-1;position:static}
@@ -821,7 +824,7 @@ body.flow-scroll-mobile #__next{height:100%;overflow:hidden}
   .set-browser-modal-toolbar{position:sticky;top:52px;z-index:2;margin:0;padding:0 0 8px;background:linear-gradient(180deg, rgba(14,27,52,0.96), rgba(14,27,52,0.88) 76%, rgba(14,27,52,0))}
   .set-search-input{min-height:42px}
   .set-browser-modal-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;overflow:auto}
-  .achievement-toast-stack{right:10px;left:10px;top:calc(10px + var(--safe-top));max-width:none}
+  .achievement-toast-stack{right:10px;left:10px;top:calc(72px + var(--safe-top));max-width:none}
   .stage-spotlight-center{width:320px;height:220px;top:110px}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:none}
