@@ -12,6 +12,8 @@ export default function App({ Component, pageProps }: AppProps) {
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
         <link rel="shortcut icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#0f172a" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </Head>
       <Component {...pageProps} />
     </>
