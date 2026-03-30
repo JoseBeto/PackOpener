@@ -5,6 +5,7 @@ import {
   claimDailyCheckIn,
   getMissionStatuses,
   getMsUntilNextDailyReset,
+  getMsUntilNextWeeklyReset,
   loadProgressionState,
   saveProgressionState,
   type ProgressionState,
@@ -25,7 +26,8 @@ function formatCountdown(ms: number): string {
 export default function MissionsPage() {
   const [progression, setProgression] = useState<ProgressionState | null>(null)
   const [checkInMessage, setCheckInMessage] = useState('')
-  const [msUntilReset, setMsUntilReset] = useState(() => getMsUntilNextDailyReset())
+  const [msUntilDailyReset, setMsUntilDailyReset] = useState(() => getMsUntilNextDailyReset())
+  const [msUntilWeeklyReset, setMsUntilWeeklyReset] = useState(() => getMsUntilNextWeeklyReset())
   const [checkInToasts, setCheckInToasts] = useState<Array<{ id: string; title: string; description: string; tone: 'mission' | 'neutral' }>>([])
 
   useEffect(() => {
@@ -33,7 +35,10 @@ export default function MissionsPage() {
   }, [])
 
   useEffect(() => {
-    const tick = () => setMsUntilReset(getMsUntilNextDailyReset())
+    const tick = () => {
+      setMsUntilDailyReset(getMsUntilNextDailyReset())
+      setMsUntilWeeklyReset(getMsUntilNextWeeklyReset())
+    }
     tick()
     const timer = window.setInterval(tick, 1000)
     return () => window.clearInterval(timer)
@@ -117,8 +122,9 @@ export default function MissionsPage() {
           </button>
           <div className="daily-checkin-note">
             {progression?.daily.checkInClaimed ? 'Next daily check-in in ' : 'Daily reset in '}
-            <strong>{formatCountdown(msUntilReset)}</strong>
+            <strong>{formatCountdown(msUntilDailyReset)}</strong>
           </div>
+          <div className="daily-checkin-note">Weekly missions reset in <strong>{formatCountdown(msUntilWeeklyReset)}</strong></div>
           {checkInMessage ? <div className="daily-checkin-note">{checkInMessage}</div> : null}
         </div>
 
@@ -141,6 +147,7 @@ export default function MissionsPage() {
 
         <div className="missions-panel weekly-panel" style={{ marginTop: '10px' }}>
           <div className="missions-head">Weekly Missions</div>
+          <div className="daily-checkin-note">Weekly reset in <strong>{formatCountdown(msUntilWeeklyReset)}</strong></div>
           {missionStatuses.weekly.map((mission) => {
             const ratio = Math.min(100, Math.round((mission.progress / mission.target) * 100))
             return (

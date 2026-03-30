@@ -25,6 +25,16 @@ export function getMsUntilNextDailyReset(now = new Date()): number {
   return Math.max(0, nextUtcHalfDay.getTime() - now.getTime())
 }
 
+export function getMsUntilNextWeeklyReset(now = new Date()): number {
+  const nextUtcMonday = new Date(now.getTime())
+  nextUtcMonday.setUTCMinutes(0, 0, 0)
+  nextUtcMonday.setUTCHours(0)
+  const isoDay = nextUtcMonday.getUTCDay() === 0 ? 7 : nextUtcMonday.getUTCDay()
+  const daysUntilNextMonday = 8 - isoDay
+  nextUtcMonday.setUTCDate(nextUtcMonday.getUTCDate() + daysUntilNextMonday)
+  return Math.max(0, nextUtcMonday.getTime() - now.getTime())
+}
+
 export type MissionKind = 'daily' | 'weekly'
 
 export type MissionDefinition = {

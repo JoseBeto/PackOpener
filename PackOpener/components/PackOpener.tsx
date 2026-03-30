@@ -1358,7 +1358,7 @@ export default function RipRealmApp() {
   }
 
   return (
-    <div className={`pack-opener-wrap is-${view}-view ${shouldCollapseText ? 'compact-ui' : ''}`}>
+    <div className={`pack-opener-wrap is-${view}-view ${isMobilePackDetailsOpen ? 'is-pack-details-open' : ''} ${shouldCollapseText ? 'compact-ui' : ''}`}>
       {view === 'select' && (
         <section className="flow-shell landing-shell premium-stage premium-stage-select">
           <div className="stage-spotlight stage-spotlight-left" />
