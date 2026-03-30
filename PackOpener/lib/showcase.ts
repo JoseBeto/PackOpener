@@ -97,3 +97,13 @@ export function sortByRarityDesc(items: ShowcasePull[]) {
     return a.name.localeCompare(b.name)
   })
 }
+
+export function removeOneShowcasePull(setId: string, cardId: string): boolean {
+  if (typeof window === 'undefined') return false
+  const current = getShowcasePulls()
+  const index = current.findIndex((item) => item.setId === setId && item.id === cardId)
+  if (index < 0) return false
+  const updated = [...current.slice(0, index), ...current.slice(index + 1)]
+  localStorage.setItem(SHOWCASE_STORAGE_KEY, JSON.stringify(updated))
+  return true
+}
