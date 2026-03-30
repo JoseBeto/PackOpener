@@ -63,6 +63,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const result: Card[] = []
   const setId = opts?.setId || ''
   const isPocketSet = getSetFamily(setId) === 'pocket'
+  const GOD_PACK_RATE = isPocketSet ? 0.0006 : 0.00035
 
   // Get rarity weight map from packDef or use defaults
   const rarityWeightMap = packDef.rarityWeightMap || new Map([
@@ -231,6 +232,15 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isPocketOneShiny = (card: Card) => rarityText(card).includes('one shiny')
   const isPocketTwoShiny = (card: Card) => rarityText(card).includes('two shiny')
   const isPocketCrown = (card: Card) => rarityText(card).includes('crown')
+  const isGodPackEligible = (card: Card) => {
+    if (isPocketSet) {
+      // Pocket analogue of Illustration Rare+ tiers.
+      return isPocketOneStar(card) || isPocketTwoStar(card) || isPocketThreeStar(card) || isPocketOneShiny(card) || isPocketTwoShiny(card) || isPocketCrown(card)
+    }
+
+    // Mainline Illustration Rare+ tiers.
+    return isIllustration(card) || isSpecialIllustration(card) || isUltraRare(card) || isGoldTier(card)
+  }
   const canBeReverse = (card: Card) => {
     const reverseFlag = (card.variants as any)?.reverse
     return reverseFlag !== false
@@ -245,6 +255,35 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   // decide whether we should use the modern slot-based template
   // support all SV sets (sv01-sv99) and mark newer 2025 eras as modern
   const useSlotTemplate = isPocketSet || /^sv\d+/.test(setId) || packDef.template === 'modern'
+
+  function buildGodPack(cardsPerPack: number): Card[] | null {
+    const eligiblePool = pool.filter(isGodPackEligible)
+    if (eligiblePool.length === 0) return null
+
+    const localPool = eligiblePool.slice()
+    const godPack: Card[] = []
+    for (let i = 0; i < cardsPerPack; i++) {
+      let picked: Card
+      if (localPool.length > 0) {
+        const idx = Math.floor(Math.random() * localPool.length)
+        picked = { ...localPool.splice(idx, 1)[0] }
+      } else {
+        picked = { ...eligiblePool[Math.floor(Math.random() * eligiblePool.length)] }
+      }
+
+      picked.isHolo = true
+      picked.isReverse = false
+      godPack.push(picked)
+    }
+
+    return godPack
+  }
+
+  // Rare full-pack jackpot: every card is Illustration-tier or above.
+  if (Math.random() < GOD_PACK_RATE) {
+    const godPack = buildGodPack(packDef.cardsPerPack || 6)
+    if (godPack) return godPack
+  }
 
   if (!useSlotTemplate) {
     // Default generic pack behavior
@@ -589,17 +628,6 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        bonusCard.isHolo = true
      }
 
-     // Check for god packs (special ultra-rare cards in certain sets)
-    const godPackSets = ['sv8pt5', 'sv9', 'sv95', 'sv9pt5', 'sv10', 'sv105', 'sv11', 'sv11pt5', 'sv12']
-    const hasGodPackChance = godPackSets.some(setPattern => setId.includes(setPattern))
-    
-     if (hasGodPackChance) {
-       const r = Math.random()
-       const godPackRate = setId.includes('sv8pt5') || setId.includes('sv95') ? 0.0008 : 0.0003
-       if (r < godPackRate) {
-         bonusCard.special = 'GodPack'
-       }
-     }
      result.push(bonusCard)
   }
 
