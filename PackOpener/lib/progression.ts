@@ -236,10 +236,12 @@ export function applyPeriodResets(state: ProgressionState, now = new Date()): Pr
 
 export function getCardPullReward(rarity?: string, special?: string): number {
   const rank = getRarityRank(rarity, special)
-  if (rank >= 9) return 120
-  if (rank >= 7) return 70
-  if (rank >= 6) return 40
-  if (rank >= 5) return 20
+  if (rank >= 10) return 320
+  if (rank >= 9) return 260
+  if (rank >= 8) return 210
+  if (rank >= 7) return 160
+  if (rank >= 6) return 125
+  if (rank >= 5) return 100
   return 0
 }
 

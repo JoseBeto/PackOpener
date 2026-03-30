@@ -163,6 +163,7 @@ export default function RipRealmApp() {
   const [ripProgress, setRipProgress] = useState(0)
   const [ripCursorX, setRipCursorX] = useState(0.5)
   const [ripCursorY, setRipCursorY] = useState(0.32)
+  const [ripDirectionUi, setRipDirectionUi] = useState<1 | -1>(1)
   const [isRipGestureActive, setIsRipGestureActive] = useState(false)
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isRevealSuspense, setIsRevealSuspense] = useState(false)
@@ -802,6 +803,7 @@ export default function RipRealmApp() {
     setIsRipGestureActive(false)
     setRipCursorX(0.5)
     setRipCursorY(0.32)
+    setRipDirectionUi(1)
     if (shouldResetProgress && !isSleeveOpening && !isSleeveRipping) {
       setRipProgress(0)
       ripProgressRef.current = 0
@@ -829,6 +831,7 @@ export default function RipRealmApp() {
     setRipCursorY((event.clientY - rect.top) / rect.height)
     ripStartRef.current = { x: event.clientX, y: event.clientY, nx, ny }
     ripDirectionRef.current = ripDirection
+    setRipDirectionUi(ripDirection)
     ripMovedRef.current = false
     lastRipSfxProgressRef.current = 0
     lastRustleSfxProgressRef.current = 0
@@ -1185,7 +1188,7 @@ export default function RipRealmApp() {
                 transition={{ duration: 0.58, ease: [0.2, 0.9, 0.25, 1] }}
                 style={{ rotateX: sleeveRotX, rotateY: sleeveRotY, transformPerspective: 900 }}
               >
-                <div className={`sleeve-trace-ui ${isRipGestureActive || ripProgress > 0 ? 'is-active' : ''}`} aria-hidden="true">
+                <div className={`sleeve-trace-ui ${isRipGestureActive || ripProgress > 0 ? 'is-active' : ''} ${ripDirectionUi === -1 ? 'is-rtl' : ''}`} aria-hidden="true">
                   <div className="sleeve-trace-label">Trace seam to rip</div>
                   <div className="sleeve-trace-rail">
                     <div className="sleeve-trace-fill" />
