@@ -222,6 +222,49 @@ class PocketSfx {
     this.playNoise({ duration: 0.07 + power * 0.05, volume: 0.009 + power * 0.01, highpass: 1300 + power * 500, delay: 0.01 })
   }
 
+  revealTier(tone: HighlightTone) {
+    if (tone === 'base') {
+      this.playTone({ frequency: 430, frequencyEnd: 340, duration: 0.09, type: 'triangle', volume: 0.012 })
+      return
+    }
+    if (tone === 'holo') {
+      this.playTone({ frequency: 510, frequencyEnd: 630, duration: 0.12, type: 'sine', volume: 0.018 })
+      this.playTone({ frequency: 760, frequencyEnd: 900, duration: 0.16, type: 'triangle', volume: 0.012, delay: 0.04 })
+      return
+    }
+    if (tone === 'ultra') {
+      this.playTone({ frequency: 290, frequencyEnd: 430, duration: 0.18, type: 'sawtooth', volume: 0.017 })
+      this.playTone({ frequency: 640, frequencyEnd: 860, duration: 0.22, type: 'triangle', volume: 0.016, delay: 0.05 })
+      this.playNoise({ duration: 0.09, volume: 0.008, highpass: 2800, delay: 0.03 })
+      return
+    }
+    this.playTone({ frequency: 260, frequencyEnd: 430, duration: 0.2, type: 'sawtooth', volume: 0.02 })
+    this.playTone({ frequency: 720, frequencyEnd: 1080, duration: 0.28, type: 'triangle', volume: 0.018, delay: 0.06 })
+    this.playTone({ frequency: 1240, frequencyEnd: 920, duration: 0.18, type: 'sine', volume: 0.012, delay: 0.11 })
+    this.playNoise({ duration: 0.12, volume: 0.01, highpass: 3000, delay: 0.04 })
+  }
+
+  coinTick(intensity = 0.6) {
+    const power = Math.max(0.2, Math.min(1, intensity))
+    this.playTone({ frequency: 620 + power * 140, frequencyEnd: 780 + power * 130, duration: 0.08, type: 'triangle', volume: 0.008 + power * 0.006 })
+  }
+
+  coinBurst(amount: number, tone: HighlightTone = 'base') {
+    if (amount <= 0) return
+    const density = Math.max(1, Math.min(4, Math.floor(amount / 110) + 1))
+    for (let index = 0; index < density; index += 1) {
+      this.coinTick(0.62 + index * 0.08)
+      this.playTone({
+        frequency: 780 + index * 120,
+        frequencyEnd: 980 + index * 100,
+        duration: 0.08 + index * 0.02,
+        type: tone === 'secret' ? 'sine' : 'triangle',
+        volume: 0.008 + index * 0.004,
+        delay: 0.04 + index * 0.05,
+      })
+    }
+  }
+
   hitRumble(tone: HighlightTone) {
     if (tone === 'base') return
     if (tone === 'holo') {

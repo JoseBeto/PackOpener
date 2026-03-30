@@ -2,8 +2,16 @@ import type { Card } from './simulator'
 import { getRarityRank } from './showcase'
 
 export const PROGRESSION_STORAGE_KEY = 'po_progression_v1'
-export const PACK_OPEN_COST = 100
+export const PROGRESSION_EVENT = 'po-progression-changed'
+export const STANDARD_PACK_OPEN_COST = 100
+export const PREMIUM_PACK_OPEN_COST = 200
+export const PACK_OPEN_COST = STANDARD_PACK_OPEN_COST
 export const DAILY_CHECKIN_REWARD = 1000
+export type PackType = 'standard' | 'premium'
+
+export function getPackOpenCost(packType: PackType): number {
+  return packType === 'premium' ? PREMIUM_PACK_OPEN_COST : STANDARD_PACK_OPEN_COST
+}
 
 export type MissionKind = 'daily' | 'weekly'
 
@@ -27,6 +35,12 @@ export type ProgressionState = {
   collection: Record<string, number>
   stats: {
     lifetimePacksOpened: number
+    lifetimeGoodPulls: number
+    lifetimeElitePulls: number
+    totalCoinsEarned: number
+    godPacksOpened: number
+    checkInStreak: number
+    lastCheckInKey: string
   }
   daily: {
     key: string
@@ -99,6 +113,26 @@ function toWeekKey(date: Date): string {
   return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
 }
 
+function fromDateKey(key?: string): Date | null {
+  if (!key) return null
+  const match = key.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+}
+
+function diffDaysFromKeys(previousKey: string, nextKey: string): number | null {
+  const prev = fromDateKey(previousKey)
+  const next = fromDateKey(nextKey)
+  if (!prev || !next) return null
+  const diff = Math.floor((next.getTime() - prev.getTime()) / 86400000)
+  return Number.isFinite(diff) ? diff : null
+}
+
+function isGodPackLike(pack: Card[]): boolean {
+  if (!pack.length) return false
+  return pack.every((card) => getRarityRank(card.rarity, card.special) >= 5)
+}
+
 function makeMissionMap(defs: MissionDefinition[]): Record<string, MissionProgress> {
   return defs.reduce<Record<string, MissionProgress>>((acc, mission) => {
     acc[mission.id] = { progress: 0, completed: false, claimed: false }
@@ -114,11 +148,18 @@ function cloneMissionMap(map: Record<string, MissionProgress>): Record<string, M
 }
 
 export function createDefaultProgressionState(date = new Date()): ProgressionState {
+  const dayKey = toDateKey(date)
   return {
     currency: 1000,
     collection: {},
     stats: {
       lifetimePacksOpened: 0,
+      lifetimeGoodPulls: 0,
+      lifetimeElitePulls: 0,
+      totalCoinsEarned: 0,
+      godPacksOpened: 0,
+      checkInStreak: 0,
+      lastCheckInKey: dayKey,
     },
     daily: {
       key: toDateKey(date),
@@ -143,6 +184,12 @@ export function normalizeProgressionState(input: unknown, now = new Date()): Pro
     collection: raw.collection && typeof raw.collection === 'object' ? { ...raw.collection } : {},
     stats: {
       lifetimePacksOpened: Math.max(0, Math.floor(raw.stats?.lifetimePacksOpened || 0)),
+      lifetimeGoodPulls: Math.max(0, Math.floor(raw.stats?.lifetimeGoodPulls || 0)),
+      lifetimeElitePulls: Math.max(0, Math.floor(raw.stats?.lifetimeElitePulls || 0)),
+      totalCoinsEarned: Math.max(0, Math.floor(raw.stats?.totalCoinsEarned || 0)),
+      godPacksOpened: Math.max(0, Math.floor(raw.stats?.godPacksOpened || 0)),
+      checkInStreak: Math.max(0, Math.floor(raw.stats?.checkInStreak || 0)),
+      lastCheckInKey: typeof raw.stats?.lastCheckInKey === 'string' ? raw.stats.lastCheckInKey : fallback.stats.lastCheckInKey,
     },
     daily: {
       key: typeof raw.daily?.key === 'string' ? raw.daily.key : fallback.daily.key,
@@ -198,6 +245,7 @@ export function saveProgressionState(state: ProgressionState) {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(PROGRESSION_STORAGE_KEY, JSON.stringify(state))
+    window.dispatchEvent(new CustomEvent(PROGRESSION_EVENT))
   } catch {
     // ignore storage errors for private mode or quota issues
   }
@@ -296,14 +344,15 @@ function applyMissionProgress(
   return { missions: nextMissions, earned }
 }
 
-export function applyPackProgression(state: ProgressionState, setId: string, pack: Card[], now = new Date()): PackProgressionOutcome {
+export function applyPackProgression(state: ProgressionState, setId: string, pack: Card[], packType: PackType = 'standard', now = new Date()): PackProgressionOutcome {
   const base = applyPeriodResets(state, now)
+  const packCost = getPackOpenCost(packType)
 
-  if (base.currency < PACK_OPEN_COST) {
+  if (base.currency < packCost) {
     return {
       nextState: base,
       currencyDelta: 0,
-      packCost: PACK_OPEN_COST,
+      packCost,
       cardReward: 0,
       missionReward: 0,
       totalReward: 0,
@@ -358,7 +407,7 @@ export function applyPackProgression(state: ProgressionState, setId: string, pac
 
   const missionReward = dailyUpdate.earned + weeklyUpdate.earned
   const totalReward = cardReward + missionReward
-  const currencyDelta = totalReward - PACK_OPEN_COST
+  const currencyDelta = totalReward - packCost
 
   const nextState: ProgressionState = {
     ...base,
@@ -366,6 +415,12 @@ export function applyPackProgression(state: ProgressionState, setId: string, pac
     collection,
     stats: {
       lifetimePacksOpened: base.stats.lifetimePacksOpened + 1,
+      lifetimeGoodPulls: base.stats.lifetimeGoodPulls + goodPulls,
+      lifetimeElitePulls: base.stats.lifetimeElitePulls + elitePulls,
+      totalCoinsEarned: base.stats.totalCoinsEarned + totalReward,
+      godPacksOpened: base.stats.godPacksOpened + (isGodPackLike(pack) ? 1 : 0),
+      checkInStreak: base.stats.checkInStreak,
+      lastCheckInKey: base.stats.lastCheckInKey,
     },
     daily: {
       ...base.daily,
@@ -381,7 +436,7 @@ export function applyPackProgression(state: ProgressionState, setId: string, pac
   return {
     nextState,
     currencyDelta,
-    packCost: PACK_OPEN_COST,
+    packCost,
     cardReward,
     missionReward,
     totalReward,
@@ -428,6 +483,17 @@ export function claimDailyCheckIn(state: ProgressionState, now = new Date()): Da
   const nextState: ProgressionState = {
     ...base,
     currency: base.currency + DAILY_CHECKIN_REWARD,
+    stats: {
+      ...base.stats,
+      totalCoinsEarned: base.stats.totalCoinsEarned + DAILY_CHECKIN_REWARD,
+      checkInStreak: (() => {
+        const delta = diffDaysFromKeys(base.stats.lastCheckInKey, base.daily.key)
+        if (delta === 1) return base.stats.checkInStreak + 1
+        if (delta === 0) return base.stats.checkInStreak
+        return 1
+      })(),
+      lastCheckInKey: base.daily.key,
+    },
     daily: {
       ...base.daily,
       checkInClaimed: true,
@@ -471,6 +537,10 @@ export function exchangeCardForCurrency(
     ...base,
     currency: base.currency + reward,
     collection: nextCollection,
+    stats: {
+      ...base.stats,
+      totalCoinsEarned: base.stats.totalCoinsEarned + reward,
+    },
   }
 
   return {

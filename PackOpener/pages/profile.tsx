@@ -9,6 +9,8 @@ import {
   type ProgressionState,
 } from '../lib/progression'
 import CardZoomModal from '../components/CardZoomModal'
+import { loadSessionStats, type SessionStats } from '../lib/sessionStats'
+import { getAchievements } from '../lib/achievements'
 
 type SetMeta = { id: string; name: string }
 type ShowcaseCardEntry = ShowcasePull & { count: number; latestPulledAt: number }
@@ -24,10 +26,13 @@ export default function ProfilePage() {
   const [exchangeMessage, setExchangeMessage] = useState('')
   const [focusCard, setFocusCard] = useState<ShowcaseCardEntry | null>(null)
   const [confirmExchange, setConfirmExchange] = useState<ExchangeConfirmState>(null)
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
+  const [setTotals, setSetTotals] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setPulls(sortByRarityDesc(getShowcasePulls()))
     setProgression(loadProgressionState())
+    setSessionStats(loadSessionStats())
   }, [])
 
   function formatCoins(value: number): string {
@@ -154,6 +159,80 @@ export default function ProfilePage() {
     }))
   }, [pulls, setsMap])
 
+  const trainerTitle = useMemo(() => {
+    const packs = progression?.stats.lifetimePacksOpened || 0
+    if (packs >= 300) return 'Master Collector'
+    if (packs >= 150) return 'Elite Opener'
+    if (packs >= 60) return 'Seasoned Collector'
+    if (packs >= 20) return 'Rising Trainer'
+    return 'Rookie Collector'
+  }, [progression?.stats.lifetimePacksOpened])
+
+  const achievements = useMemo(() => {
+    if (!progression) return []
+    return getAchievements(progression)
+  }, [progression])
+
+  const topSetOwnership = useMemo(() => {
+    if (!progression) return [] as Array<{ setId: string; owned: number }>
+    const bySet: Record<string, number> = {}
+    for (const [key, count] of Object.entries(progression.collection)) {
+      const sep = key.indexOf(':')
+      if (sep <= 0) continue
+      const setId = key.slice(0, sep)
+      bySet[setId] = (bySet[setId] || 0) + count
+    }
+    return Object.entries(bySet)
+      .map(([setId, owned]) => ({ setId, owned }))
+      .sort((a, b) => b.owned - a.owned)
+      .slice(0, 6)
+  }, [progression])
+
+  useEffect(() => {
+    if (topSetOwnership.length === 0) return
+    let cancelled = false
+
+    async function ensureTotals() {
+      const missing = topSetOwnership.filter((item) => !setTotals[item.setId]).map((item) => item.setId)
+      if (!missing.length) return
+
+      const updates: Record<string, number> = {}
+      await Promise.all(
+        missing.map(async (setId) => {
+          try {
+            const res = await fetch(`/api/cards?set=${encodeURIComponent(setId)}`)
+            const data = await res.json()
+            updates[setId] = Array.isArray(data?.cards) ? data.cards.length : 0
+          } catch {
+            updates[setId] = 0
+          }
+        }),
+      )
+
+      if (cancelled) return
+      setSetTotals((prev) => ({ ...prev, ...updates }))
+    }
+
+    ensureTotals()
+    return () => {
+      cancelled = true
+    }
+  }, [topSetOwnership, setTotals])
+
+  const setCompletion = useMemo(() => {
+    return topSetOwnership.map((entry) => {
+      const total = setTotals[entry.setId] || 0
+      const ratio = total > 0 ? Math.min(1, entry.owned / total) : 0
+      return {
+        setId: entry.setId,
+        setName: setsMap[entry.setId] || entry.setId.toUpperCase(),
+        owned: entry.owned,
+        total,
+        ratio,
+      }
+    })
+  }, [topSetOwnership, setTotals, setsMap])
+
   const duplicateSummary = useMemo(() => {
     let duplicateCopies = 0
     let duplicateReward = 0
@@ -242,6 +321,61 @@ export default function ProfilePage() {
       <section className="profile-wrap">
         <h1 className="profile-title">Profile</h1>
         <p className="profile-subtitle">Showcase includes only pulls above Double Rare, grouped by set and ordered by rarity.</p>
+
+        <section className="trainer-card">
+          <div className="trainer-card-head">
+            <span className="trainer-title">{trainerTitle}</span>
+            <strong>Trainer Profile</strong>
+          </div>
+          <div className="trainer-stats-grid">
+            <div className="trainer-stat"><span>Lifetime Packs</span><strong>{formatCoins(progression?.stats.lifetimePacksOpened || 0)}</strong></div>
+            <div className="trainer-stat"><span>Good Pulls</span><strong>{formatCoins(progression?.stats.lifetimeGoodPulls || 0)}</strong></div>
+            <div className="trainer-stat"><span>Elite Pulls</span><strong>{formatCoins(progression?.stats.lifetimeElitePulls || 0)}</strong></div>
+            <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} days</strong></div>
+            <div className="trainer-stat"><span>Session Packs</span><strong>{formatCoins(sessionStats?.packsOpened || 0)}</strong></div>
+            <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatCoins(sessionStats?.netCoins || 0)}</strong></div>
+          </div>
+        </section>
+
+        <section className="completion-panel">
+          <div className="panel-head">
+            <h2>Set Completion</h2>
+            <span>Top sets by ownership</span>
+          </div>
+          <div className="completion-grid">
+            {setCompletion.length === 0 ? (
+              <div className="empty-state">Open packs to start set completion tracking.</div>
+            ) : (
+              setCompletion.map((item) => (
+                <article key={item.setId} className="completion-card">
+                  <div className="completion-ring" style={{ ['--completion' as any]: `${Math.round(item.ratio * 100)}%` }}>
+                    <span>{Math.round(item.ratio * 100)}%</span>
+                  </div>
+                  <div className="completion-copy">
+                    <strong>{item.setName}</strong>
+                    <span>{formatCoins(item.owned)} / {formatCoins(item.total || 0)} cards</span>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="achievement-panel">
+          <div className="panel-head">
+            <h2>Achievement Wall</h2>
+            <span>{achievements.filter((item) => item.unlocked).length}/{achievements.length} unlocked</span>
+          </div>
+          <div className="achievement-grid">
+            {achievements.map((achievement) => (
+              <article key={achievement.id} className={`achievement-item ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                <strong>{achievement.label}</strong>
+                <p>{achievement.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <div className="profile-economy-row">
           <div className="profile-economy-card">
             <span>Currency</span>

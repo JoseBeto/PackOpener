@@ -3,22 +3,23 @@ import { AnimatePresence, animate, motion, useMotionValue, useSpring, useTransfo
 import PackSelector from './PackSelector'
 import packs from '../data/packs.json'
 import { simulatePack, type Card } from '../lib/simulator'
-import { addShowcasePulls } from '../lib/showcase'
+import { addShowcasePulls, removeOneShowcasePull } from '../lib/showcase'
 import {
-  DAILY_CHECKIN_REWARD,
-  PACK_OPEN_COST,
   applyPackProgression,
-  claimDailyCheckIn,
   createDefaultProgressionState,
+  exchangeCardForCurrency,
+  getPackOpenCost,
   getCardPullReward,
-  getMissionStatuses,
   loadProgressionState,
   saveProgressionState,
+  type PackType,
   type ProgressionState,
 } from '../lib/progression'
 import CardZoomModal from './CardZoomModal'
 import { getSfxEngine } from '../lib/sfx'
 import { getCardRankBySet, getSetFamily, getBallTypes, MAINLINE_LADDER_DISPLAY, POCKET_LADDER_DISPLAY } from '../lib/rarityLadder'
+import { recordSessionPackOpen } from '../lib/sessionStats'
+import { getAchievements } from '../lib/achievements'
 
 type FocusCard = {
   name: string
@@ -44,9 +45,10 @@ type PackEconomySummary = {
 }
 
 type RewardTone = 'low' | 'mid' | 'high'
+type AchievementToast = { id: string; label: string; description: string }
 
 function formatCoins(value: number): string {
-  return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(value)))
+  return new Intl.NumberFormat('en-US').format(Math.round(value))
 }
 
 function getRewardTone(reward: number): RewardTone {
@@ -140,7 +142,7 @@ export default function RipRealmApp() {
   const RIP_TRACK_END_X = 0.98
   const RIP_RELEASE_THRESHOLD = 0.56
   const [setId, setSetId] = useState('sv10')
-  const [packType, setPackType] = useState('standard')
+  const [packType, setPackType] = useState<PackType>('standard')
   const [loading, setLoading] = useState(false)
   const [pool, setPool] = useState<Card[]>([])
   const [setNames, setSetNames] = useState<Record<string, string>>({})
@@ -172,8 +174,11 @@ export default function RipRealmApp() {
   const [isCompactMode, setIsCompactMode] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
   const [showRevealHint, setShowRevealHint] = useState(false)
-  const [dailyCheckInMessage, setDailyCheckInMessage] = useState('')
   const [hintActivityTick, setHintActivityTick] = useState(0)
+  const [summaryRewardCount, setSummaryRewardCount] = useState(0)
+  const [summaryNetCount, setSummaryNetCount] = useState(0)
+  const [summaryActionMessage, setSummaryActionMessage] = useState('')
+  const [achievementToasts, setAchievementToasts] = useState<AchievementToast[]>([])
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveGestureConsumedRef = useRef(false)
@@ -197,6 +202,7 @@ export default function RipRealmApp() {
   const poolRequestSeqRef = useRef(0)
   const poolAbortRef = useRef<AbortController | null>(null)
   const sfxRef = useRef(getSfxEngine())
+  const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
   const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
@@ -215,12 +221,10 @@ export default function RipRealmApp() {
   const visibleRewardTone = getRewardTone(visibleCardReward)
   const remainingCards = hasActiveOpening ? currentPack.length - revealIndex - 1 : 0
   const packTypeLabel = packType === 'premium' ? 'Premium Pack' : 'Standard Pack'
+  const packOpenCost = getPackOpenCost(packType)
   const setDisplayName = setNames[setId] || setId.toUpperCase()
   const setLogo = setLogos[setId] || null
-  const missionStatuses = useMemo(() => getMissionStatuses(progression), [progression])
-  const weeklyCompleted = useMemo(() => missionStatuses.weekly.filter((mission) => mission.completed).length, [missionStatuses.weekly])
-  const canAffordPack = progression.currency >= PACK_OPEN_COST
-  const hasClaimedDailyCheckIn = progression.daily.checkInClaimed
+  const canAffordPack = progression.currency >= packOpenCost
   const isPocketSet = getSetFamily(setId) === 'pocket'
   const ballTypes = isPocketSet
     ? { pokeball: false, masterball: false, loveball: false, friendball: false, quickball: false, duskball: false, rocketr: false, energytype: false }
@@ -228,14 +232,48 @@ export default function RipRealmApp() {
   const hasBallReverse = ballTypes.pokeball
   const hasMasterBall = ballTypes.masterball
   const isAscendedHeroesSet = setId.trim().toLowerCase() === 'me02.5'
+  const setTypeLabel = isPocketSet ? 'Pokemon TCG Pocket' : 'Pokemon TCG Mainline'
+  const baseMixLabel = isPocketSet ? '1 diamond + 2 diamond base' : '1 Common + 2 Uncommon base'
+  const reverseFinishLabel = isPocketSet
+    ? 'Standard reverse'
+    : isAscendedHeroesSet
+    ? 'Energy / Ball / Rocket pattern reverse'
+    : hasBallReverse
+    ? hasMasterBall
+      ? 'Standard + Poke Ball + Master Ball reverse'
+      : 'Standard + Poke Ball reverse'
+    : 'Standard reverse'
   const currentHighlight = getHighlight(visibleCard, setId)
+  const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 460 : currentHighlight.tone === 'ultra' ? 380 : currentHighlight.tone === 'holo' ? 260 : 200
+  const revealFlipDuration = currentHighlight.tone === 'secret' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.38 : currentHighlight.tone === 'holo' ? 0.34 : 0.3
+  const revealToneWashDuration = currentHighlight.tone === 'secret' ? 0.7 : currentHighlight.tone === 'ultra' ? 0.56 : currentHighlight.tone === 'holo' ? 0.4 : 0.28
+  const revealToneWashOpacity = isCardFaceUp ? (currentHighlight.tone === 'base' ? 0.24 : currentHighlight.tone === 'holo' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.56 : 0.68) : 0.16
   const bestPull = useMemo(() => {
     if (currentPack.length === 0) return null
     return [...currentPack].sort((a, b) => getCardRankBySet(b, setId) - getCardRankBySet(a, setId))[0]
   }, [currentPack, setId])
   const bestPullHighlight = getHighlight(bestPull, setId)
+  const summaryRarityBreakdown = useMemo(() => {
+    const counts: Record<HighlightTone, number> = { base: 0, holo: 0, ultra: 0, secret: 0 }
+    for (const card of currentPack) {
+      const tone = getHighlight(card, setId).tone
+      counts[tone] += 1
+    }
+    return counts
+  }, [currentPack, setId])
+  const newCardHighlights = useMemo(() => {
+    return currentPack
+      .map((card, index) => ({ card, isNew: Boolean(currentPackNewFlags[index]) }))
+      .filter((entry) => entry.isNew)
+      .slice(0, 3)
+      .map((entry) => entry.card.name)
+  }, [currentPack, currentPackNewFlags])
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
+
+  function getCollectionKey(localSetId: string, cardId: string): string {
+    return `${localSetId}:${cardId}`
+  }
 
   function getPackOpeningTone(pack: Card[]): HighlightTone {
     let bestTone: HighlightTone = 'base'
@@ -286,9 +324,46 @@ export default function RipRealmApp() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     const loaded = loadProgressionState(new Date())
+    const unlocked = new Set(getAchievements(loaded).filter((item) => item.unlocked).map((item) => item.id))
+    unlockedAchievementIdsRef.current = unlocked
     setProgression(loaded)
     saveProgressionState(loaded)
   }, [])
+
+  useEffect(() => {
+    if (!achievementToasts.length) return
+    const timers = achievementToasts.map((toast) =>
+      window.setTimeout(() => {
+        setAchievementToasts((prev) => prev.filter((item) => item.id !== toast.id))
+      }, 4200),
+    )
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [achievementToasts])
+
+  function applyProgressionUpdate(nextState: ProgressionState, options?: { suppressToasts?: boolean }) {
+    const unlockedNow = getAchievements(nextState).filter((item) => item.unlocked)
+    const unlockedSet = new Set(unlockedNow.map((item) => item.id))
+
+    if (!options?.suppressToasts) {
+      const newlyUnlocked = unlockedNow.filter((item) => !unlockedAchievementIdsRef.current.has(item.id))
+      if (newlyUnlocked.length > 0) {
+        setAchievementToasts((prev) => {
+          const existing = new Set(prev.map((item) => item.id))
+          const additions = newlyUnlocked
+            .filter((item) => !existing.has(item.id))
+            .map((item) => ({ id: item.id, label: item.label, description: item.description }))
+          return [...prev, ...additions]
+        })
+        sfxRef.current.rarity('holo')
+      }
+    }
+
+    unlockedAchievementIdsRef.current = unlockedSet
+    setProgression(nextState)
+    saveProgressionState(nextState)
+  }
 
   useEffect(() => {
     let mounted = true
@@ -363,6 +438,48 @@ export default function RipRealmApp() {
     summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     sfxRef.current.summary()
   }, [view])
+
+  useEffect(() => {
+    if (view !== 'summary' || !lastPackEconomy) {
+      setSummaryRewardCount(0)
+      setSummaryNetCount(0)
+      return
+    }
+
+    let lastTick = 0
+    setSummaryRewardCount(0)
+    setSummaryNetCount(0)
+
+    const rewardAnimation = animate(0, lastPackEconomy.totalReward, {
+      duration: 0.95,
+      ease: 'easeOut',
+      onUpdate: (value) => {
+        const rounded = Math.round(value)
+        setSummaryRewardCount(rounded)
+        if (lastPackEconomy.totalReward > 0 && rounded - lastTick >= 30) {
+          sfxRef.current.coinTick(0.58)
+          lastTick = rounded
+        }
+      },
+      onComplete: () => {
+        if (lastPackEconomy.totalReward > 0) {
+          sfxRef.current.coinBurst(lastPackEconomy.totalReward, bestPullHighlight.tone)
+        }
+      },
+    })
+
+    const netAnimation = animate(0, lastPackEconomy.currencyDelta, {
+      duration: 0.82,
+      delay: 0.16,
+      ease: 'easeOut',
+      onUpdate: (value) => setSummaryNetCount(Math.round(value)),
+    })
+
+    return () => {
+      rewardAnimation.stop()
+      netAnimation.stop()
+    }
+  }, [view, lastPackEconomy, bestPullHighlight.tone])
 
   useEffect(() => {
     if (!hasActiveOpening) return
@@ -454,18 +571,21 @@ export default function RipRealmApp() {
     }
 
     const highlight = getHighlight(visibleCard, setId)
-    const suspenseDelay = highlight.tone === 'secret' ? 440 : highlight.tone === 'ultra' ? 370 : 220
     setIsCardFaceUp(false)
     setIsSpotlightMoment(false)
     setIsRevealSuspense(highlight.tone === 'secret' || highlight.tone === 'ultra')
     if (highlight.tone === 'secret' || highlight.tone === 'ultra') {
       sfxRef.current.drawSlide(highlight.tone === 'secret' ? 0.98 : 0.88)
     }
+    sfxRef.current.revealTier(highlight.tone)
     flipTimeoutRef.current = window.setTimeout(() => {
       setIsRevealSuspense(false)
       setIsCardFaceUp(true)
       sfxRef.current.flip()
       if (highlight.label) sfxRef.current.rarity(highlight.tone)
+      if (visibleCardReward > 0) {
+        sfxRef.current.coinBurst(visibleCardReward, highlight.tone)
+      }
       sfxRef.current.cardLand(highlight.tone === 'secret' ? 0.95 : highlight.tone === 'ultra' ? 0.82 : highlight.tone === 'holo' ? 0.64 : 0.5)
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
@@ -483,8 +603,8 @@ export default function RipRealmApp() {
       }
 
       flipTimeoutRef.current = null
-    }, suspenseDelay)
-  }, [hasActiveOpening, visibleCard, isMuted])
+    }, revealSuspenseDelay)
+  }, [hasActiveOpening, visibleCard, isMuted, revealSuspenseDelay, setId, visibleCardReward])
 
   useEffect(() => {
     dragX.set(0)
@@ -649,8 +769,8 @@ export default function RipRealmApp() {
       return null
     }
 
-    if (progression.currency < PACK_OPEN_COST) {
-      setError(`Not enough coins. A pack costs ${PACK_OPEN_COST} and you have ${formatCoins(progression.currency)}.`)
+    if (progression.currency < packOpenCost) {
+      setError(`Not enough coins. A pack costs ${packOpenCost} and you have ${formatCoins(progression.currency)}.`)
       return null
     }
 
@@ -661,14 +781,14 @@ export default function RipRealmApp() {
     }
 
     const pack = simulatePack(def, pool, { setId })
-    const outcome = applyPackProgression(progression, setId, pack)
+    const outcome = applyPackProgression(progression, setId, pack, packType)
     if (outcome.notAffordable) {
-      setError(`Not enough coins. A pack costs ${PACK_OPEN_COST} and you have ${formatCoins(progression.currency)}.`)
+      setError(`Not enough coins. A pack costs ${packOpenCost} and you have ${formatCoins(progression.currency)}.`)
       return null
     }
 
-    setProgression(outcome.nextState)
-    saveProgressionState(outcome.nextState)
+    applyProgressionUpdate(outcome.nextState)
+    recordSessionPackOpen(pack, setId, outcome.currencyDelta)
     setCurrentPackNewFlags(outcome.newCardFlags)
     setLastPackEconomy({
       packCost: outcome.packCost,
@@ -679,22 +799,9 @@ export default function RipRealmApp() {
       currencyAfter: outcome.nextState.currency,
       newCardsCount: outcome.newCardsCount,
     })
-    setDailyCheckInMessage('')
     addShowcasePulls(setId, pack)
     setError('')
     return pack
-  }
-
-  function handleDailyCheckIn() {
-    const outcome = claimDailyCheckIn(progression)
-    setProgression(outcome.nextState)
-    saveProgressionState(outcome.nextState)
-    if (outcome.claimed) {
-      setDailyCheckInMessage(`Daily check-in claimed: +${formatCoins(outcome.reward)} coins.`)
-      setError('')
-    } else {
-      setDailyCheckInMessage('Daily check-in already claimed. Come back tomorrow.')
-    }
   }
 
   function preparePack() {
@@ -964,11 +1071,87 @@ export default function RipRealmApp() {
     }
   }
 
-  function handlePackTypeChange(value: string) {
+  function handlePackTypeChange(value: PackType) {
     setPackType(value)
     if (view !== 'select') {
       resetFlow('select')
     }
+  }
+
+  async function handleShareSummary() {
+    if (!currentPack.length) return
+    const bestName = bestPull?.name || 'Unknown card'
+    const net = lastPackEconomy?.currencyDelta ?? 0
+    const text = `I opened a ${packTypeLabel} in ${setDisplayName} and hit ${bestName}. Pack net: ${net >= 0 ? '+' : ''}${net} coins.`
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        setSummaryActionMessage('Pull summary copied to clipboard.')
+      } else {
+        setSummaryActionMessage('Clipboard not available in this browser.')
+      }
+    } catch {
+      setSummaryActionMessage('Could not copy summary. Try again.')
+    }
+  }
+
+  function handleAddBestToShowcase() {
+    if (!bestPull) return
+    addShowcasePulls(setId, [bestPull])
+    setSummaryActionMessage(`${bestPull.name} added to showcase.`)
+  }
+
+  function handleExchangePackDuplicates() {
+    if (!currentPack.length) return
+
+    const packCounts: Record<string, { card: Card; count: number }> = {}
+    for (const card of currentPack) {
+      const key = getCollectionKey(setId, card.id)
+      if (!packCounts[key]) {
+        packCounts[key] = { card, count: 1 }
+      } else {
+        packCounts[key].count += 1
+      }
+    }
+
+    let nextProgression = progression
+    let exchangedCopies = 0
+    let rewardTotal = 0
+
+    for (const [key, entry] of Object.entries(packCounts)) {
+      const totalOwnedAfterPack = nextProgression.collection[key] || 0
+      const beforeOwned = Math.max(0, totalOwnedAfterPack - entry.count)
+      const duplicatesBefore = Math.max(0, beforeOwned - 1)
+      const duplicatesAfter = Math.max(0, beforeOwned + entry.count - 1)
+      const duplicatesFromPack = Math.max(0, duplicatesAfter - duplicatesBefore)
+
+      for (let i = 0; i < duplicatesFromPack; i += 1) {
+        const outcome = exchangeCardForCurrency(nextProgression, setId, entry.card.id, entry.card.rarity, entry.card.special, { allowMissingCollection: true })
+        if (!outcome.success) break
+        nextProgression = outcome.nextState
+        rewardTotal += outcome.reward
+        exchangedCopies += 1
+        removeOneShowcasePull(setId, entry.card.id)
+      }
+    }
+
+    if (exchangedCopies <= 0) {
+      setSummaryActionMessage('No duplicates from this pack to exchange.')
+      return
+    }
+
+    applyProgressionUpdate(nextProgression)
+    setSummaryActionMessage(`Exchanged ${exchangedCopies} duplicate card${exchangedCopies === 1 ? '' : 's'} for +${formatCoins(rewardTotal)} coins.`)
+    setLastPackEconomy((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        totalReward: prev.totalReward + rewardTotal,
+        currencyDelta: prev.currencyDelta + rewardTotal,
+        currencyAfter: prev.currencyAfter + rewardTotal,
+      }
+    })
   }
 
   return (
@@ -992,13 +1175,45 @@ export default function RipRealmApp() {
             </button>
           </div>
 
-          <div className="landing-grid">
-            <div className="landing-card">
+          <div className="landing-grid landing-grid-focus">
+            <div className="landing-card landing-card-focus">
               <PackSelector
                 setId={setId}
                 onSetIdChange={handleSetIdChange}
                 packType={packType}
                 onPackTypeChange={handlePackTypeChange}
+                packTypePanel={
+                  <div className="selected-pack-card selected-pack-card-inline selected-pack-card-side">
+                    <div className="selected-pack-inline-main">
+                      <div className="selected-pack-art selected-pack-art-inline" aria-hidden="true">
+                        <div className="selected-pack-glow" />
+                        <div className="selected-pack-sleeve selected-pack-sleeve-inline">
+                          {setLogo
+                            ? <img src={setLogo} alt={setDisplayName} className="selected-pack-logo" draggable={false} />
+                            : <span>{setDisplayName}</span>
+                          }
+                        </div>
+                      </div>
+
+                      <div className="selected-pack-copy-block">
+                        <div className="selected-pack-topline">Selected pack</div>
+                        <div className="selected-pack-title">{packTypeLabel}</div>
+                        <div className="selected-pack-subtitle">{setDisplayName}</div>
+                        <div className="selected-pack-system">Set Type: {setTypeLabel}</div>
+                        <div className="selected-pack-tag-row">
+                          <span className="selected-pack-tag">{packOpenCost} coins</span>
+                          <span className="selected-pack-tag">6 cards per pack</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pack-stat-list selected-pack-stat-grid">
+                      <div className="pack-stat"><span>Base cards</span><strong>{baseMixLabel}</strong></div>
+                      <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
+                      <div className="pack-stat"><span>Reverse finish</span><strong>{reverseFinishLabel}</strong></div>
+                    </div>
+                  </div>
+                }
               />
 
               <button className="button landing-open-button" onClick={preparePack} disabled={loading || pool.length === 0 || !canAffordPack}>
@@ -1020,87 +1235,9 @@ export default function RipRealmApp() {
                 </div>
                 <div className="economy-row">
                   <span>Pack cost</span>
-                  <strong>{PACK_OPEN_COST}</strong>
+                  <strong>{packOpenCost}</strong>
                 </div>
-                <button
-                  type="button"
-                  className="ghost-button daily-checkin-btn"
-                  onClick={handleDailyCheckIn}
-                  disabled={hasClaimedDailyCheckIn}
-                >
-                  {hasClaimedDailyCheckIn ? 'Daily Check-in Claimed' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
-                </button>
-                {dailyCheckInMessage && <div className="daily-checkin-note">{dailyCheckInMessage}</div>}
-                {!canAffordPack && <div className="economy-note">Open missions or high-rarity pulls to earn more coins.</div>}
-              </div>
-
-              <div className="missions-panel">
-                <div className="missions-head">Daily Missions</div>
-                {missionStatuses.daily.map((mission) => {
-                  const ratio = Math.min(100, Math.round((mission.progress / mission.target) * 100))
-                  return (
-                    <div key={mission.id} className="mission-row">
-                      <div className="mission-label-line">
-                        <span className="mission-label">{mission.label}</span>
-                        <span className="mission-progress">{mission.progress}/{mission.target}</span>
-                      </div>
-                      <div className="mission-track"><span style={{ width: `${ratio}%` }} /></div>
-                      <div className="mission-reward">+{mission.reward} coins {mission.completed ? '• Complete' : ''}</div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="missions-panel weekly-panel">
-                <div className="missions-head">Weekly Track {weeklyCompleted}/{missionStatuses.weekly.length}</div>
-                {missionStatuses.weekly.map((mission) => {
-                  const ratio = Math.min(100, Math.round((mission.progress / mission.target) * 100))
-                  return (
-                    <div key={mission.id} className="mission-row">
-                      <div className="mission-label-line">
-                        <span className="mission-label">{mission.label}</span>
-                        <span className="mission-progress">{mission.progress}/{mission.target}</span>
-                      </div>
-                      <div className="mission-track"><span style={{ width: `${ratio}%` }} /></div>
-                      <div className="mission-reward">+{mission.reward} coins {mission.completed ? '• Complete' : ''}</div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="selected-pack-card">
-              <div className="selected-pack-topline">Selected pack</div>
-              <div className="selected-pack-title">{packTypeLabel}</div>
-              <div className="selected-pack-subtitle">{setDisplayName}</div>
-              <div className="selected-pack-system">Set Type: {isPocketSet ? 'Pokémon TCG Pocket' : 'Pokémon TCG Mainline'}</div>
-
-              <div className="pack-stat-list">
-                <div className="pack-stat"><span>Base cards</span><strong>{isPocketSet ? '1◊ + 2◊' : '1 Common + 2 Uncommon'}</strong></div>
-                <div className="pack-stat"><span>Hit ladder</span><strong>{isPocketSet ? POCKET_LADDER_DISPLAY : MAINLINE_LADDER_DISPLAY}</strong></div>
-                <div className="pack-stat"><span>Reverse finish</span><strong>{isPocketSet ? 'Standard reverse' : isAscendedHeroesSet ? 'Energy / Ball / Rocket patterns' : hasBallReverse ? (hasMasterBall ? '~72% std • ~25% Poké Ball • ~3% Master Ball' : '~75% std • ~25% Poké Ball') : 'Standard reverse'}</strong></div>
-                <div className="pack-stat"><span>Total cards</span><strong>6 per pack</strong></div>
-              </div>
-
-              <div className="selected-pack-legend">
-                {isPocketSet
-                  ? 'Pocket tiers: 1◊/2◊ base, 3◊/4◊ core hits, 1★/2★/3★ chase, Crown top tier.'
-                  : isAscendedHeroesSet
-                  ? 'Ascended Heroes: non-ex Pokémon split between Energy reverse and an assigned pattern reverse. Simulated patterns include Poké Ball, Love Ball, Friend Ball, Quick Ball, Dusk Ball, and Rocket R.'
-                  : hasBallReverse
-                  ? `Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers. Reverse slot: ~72% standard, ~25% Poké Ball${hasMasterBall ? ', ~3% Master Ball' : ''}.`
-                  : 'Mainline tiers: Double is most common hit, Ultra is mid-tier, Illustration is harder, and SIR/Gold are top chase tiers.'
-                }
-              </div>
-
-              <div className="selected-pack-art" aria-hidden="true">
-                <div className="selected-pack-glow" />
-                <div className="selected-pack-sleeve">
-                  {setLogo
-                    ? <img src={setLogo} alt={setDisplayName} className="selected-pack-logo" draggable={false} />
-                    : <span>{setDisplayName}</span>
-                  }
-                </div>
+                {!canAffordPack && <div className="economy-note">Earn more coins from higher-rarity pulls and duplicate exchanges.</div>}
               </div>
             </div>
           </div>
@@ -1244,6 +1381,12 @@ export default function RipRealmApp() {
 
       {hasActiveOpening && visibleCard && (
         <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${isSpotlightMoment && isBigHitTone ? 'opening-big-hit' : ''} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
+          <motion.div
+            className={`reveal-tone-wash reveal-tone-${currentHighlight.tone}`}
+            initial={false}
+            animate={{ opacity: revealToneWashOpacity }}
+            transition={{ duration: revealToneWashDuration, ease: [0.2, 0.9, 0.25, 1] }}
+          />
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
@@ -1389,7 +1532,7 @@ export default function RipRealmApp() {
                     <motion.div
                       className="opening-flip-card"
                       animate={{ rotateY: isCardFaceUp ? 180 : 0 }}
-                      transition={{ duration: 0.34, ease: [0.2, 0.9, 0.25, 1] }}
+                      transition={{ duration: revealFlipDuration, ease: [0.2, 0.9, 0.25, 1] }}
                     >
                       <div className="opening-card-face opening-card-face-back">
                         <img src="/card-back.png" alt="card back" className="opening-back-art" draggable={false} />
@@ -1470,13 +1613,57 @@ export default function RipRealmApp() {
             </div>
 
             {lastPackEconomy && (
+              <motion.div
+                className="summary-ceremony"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: [0.2, 0.9, 0.25, 1] }}
+              >
+                <div className="summary-ceremony-total">
+                  <span>Total Rewards</span>
+                  <strong>+{formatCoins(summaryRewardCount)} coins</strong>
+                </div>
+                <div className="summary-ceremony-grid">
+                  <div className="summary-ceremony-chip">
+                    <span>New Cards</span>
+                    <strong>{lastPackEconomy.newCardsCount}</strong>
+                  </div>
+                  <div className="summary-ceremony-chip">
+                    <span>Highest Rarity</span>
+                    <strong>{bestPullHighlight.label || 'Base Pull'}</strong>
+                  </div>
+                  <div className="summary-ceremony-chip">
+                    <span>Mission Progress</span>
+                    <strong>+{lastPackEconomy.missionReward}</strong>
+                  </div>
+                  <div className="summary-ceremony-chip">
+                    <span>Pack Net</span>
+                    <strong className={summaryNetCount >= 0 ? 'is-positive' : 'is-negative'}>
+                      {summaryNetCount >= 0 ? '+' : ''}{formatCoins(summaryNetCount)}
+                    </strong>
+                  </div>
+                </div>
+                <div className="summary-rarity-row">
+                  <div className="summary-rarity-chip">Base {summaryRarityBreakdown.base}</div>
+                  <div className="summary-rarity-chip is-holo">Holo {summaryRarityBreakdown.holo}</div>
+                  <div className="summary-rarity-chip is-ultra">Ultra {summaryRarityBreakdown.ultra}</div>
+                  <div className="summary-rarity-chip is-secret">Secret {summaryRarityBreakdown.secret}</div>
+                </div>
+                <div className="summary-new-row">
+                  <span>New Spotlight</span>
+                  <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
+                </div>
+              </motion.div>
+            )}
+
+            {lastPackEconomy && (
               <div className="pack-economy-summary">
                 <div className="pack-econ-pill">Cost: -{lastPackEconomy.packCost}</div>
                 <div className="pack-econ-pill">Card rewards: +{lastPackEconomy.cardReward}</div>
                 <div className="pack-econ-pill">Mission rewards: +{lastPackEconomy.missionReward}</div>
                 <div className="pack-econ-pill">New cards: {lastPackEconomy.newCardsCount}</div>
                 <div className={`pack-econ-pill pack-econ-total ${lastPackEconomy.currencyDelta >= 0 ? 'is-positive' : 'is-negative'}`}>
-                  Net: {lastPackEconomy.currencyDelta >= 0 ? '+' : ''}{lastPackEconomy.currencyDelta}
+                  Net: {summaryNetCount >= 0 ? '+' : ''}{summaryNetCount}
                 </div>
                 <div className="pack-econ-balance">Balance: {formatCoins(lastPackEconomy.currencyAfter)} coins</div>
               </div>
@@ -1504,6 +1691,15 @@ export default function RipRealmApp() {
                     })
                   }
                 >
+                  <motion.div
+                    className={`best-pull-crown crown-${bestPullHighlight.tone}`}
+                    initial={{ opacity: 0, y: -8, scale: 0.84, rotate: -8 }}
+                    animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+                    transition={{ duration: 0.34, delay: 0.18, ease: [0.2, 0.9, 0.25, 1] }}
+                    aria-hidden="true"
+                  >
+                    Crown Pick
+                  </motion.div>
                   {bestPull.images?.small
                     ? <img src={bestPull.images.small} alt={bestPull.name} className="card-art" draggable={false} />
                     : <div className="card-status">No Image</div>}
@@ -1523,8 +1719,12 @@ export default function RipRealmApp() {
 
             <div className="summary-actions">
               <button className="button" onClick={preparePack} disabled={!canAffordPack}>Open Another Pack</button>
+              <button className="ghost-button" onClick={handleExchangePackDuplicates}>Exchange Duplicates</button>
+              <button className="ghost-button" onClick={handleAddBestToShowcase} disabled={!bestPull}>Add Best to Showcase</button>
+              <button className="ghost-button" onClick={handleShareSummary}>Share Pull</button>
               <button className="ghost-button" onClick={() => resetFlow('select')}>Select New Set</button>
             </div>
+            {summaryActionMessage ? <div className="summary-action-note">{summaryActionMessage}</div> : null}
 
             <div className="opened-grid summary-grid">
               {currentPack.map((c, i) => {
@@ -1611,6 +1811,25 @@ export default function RipRealmApp() {
         specialBadgeClass={focusCard?.specialBadgeClass}
         onClose={() => setFocusCard(null)}
       />
+
+      <div className="achievement-toast-stack" aria-live="polite" aria-label="Achievement unlocked notifications">
+        <AnimatePresence>
+          {achievementToasts.map((toast) => (
+            <motion.div
+              key={toast.id}
+              className="achievement-toast"
+              initial={{ opacity: 0, y: 14, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.96 }}
+              transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
+            >
+              <span className="achievement-toast-tag">Achievement Unlocked</span>
+              <strong>{toast.label}</strong>
+              <p>{toast.description}</p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
