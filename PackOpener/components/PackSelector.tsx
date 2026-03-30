@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { getSetFamily } from '../lib/rarityLadder'
 import { PREMIUM_PACK_OPEN_COST, STANDARD_PACK_OPEN_COST, type PackType } from '../lib/progression'
 
@@ -57,6 +57,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
   const [browserTab, setBrowserTab] = useState<BrowserTab>('newest')
   const [eraFilter, setEraFilter] = useState<EraKey>('all')
   const [isMobilePackDetailsOpen, setIsMobilePackDetailsOpen] = useState(false)
+  const setTileGridRef = useRef<HTMLDivElement>(null)
 
   const familySets = sets.filter((set) => (setFamily === 'pocket' ? getSetFamily(set.id) === 'pocket' : getSetFamily(set.id) === 'mainline'))
   const filteredSets = familySets.filter((set) => {
@@ -236,6 +237,21 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
     }
   }, [])
 
+  // Scroll the carousel to show the selected set
+  useEffect(() => {
+    if (typeof window === 'undefined' || !setTileGridRef.current) return
+    
+    // Find the active set tile button
+    const activeButton = setTileGridRef.current.querySelector(
+      `.set-tile-card.is-active`
+    ) as HTMLElement | null
+    
+    if (activeButton) {
+      // Use scrollIntoView with block: 'nearest' to smooth scroll
+      activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
+  }, [setId])
+
   return (
     <>
       <div className="set-family-switch" role="tablist" aria-label="Set family">
@@ -281,7 +297,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
                   <span>Scroll the set wall and tap a tile to lock your pick.</span>
                 </div>
 
-                <div className="set-tile-grid" role="list" aria-label="Pack set tile grid">
+                <div className="set-tile-grid" role="list" aria-label="Pack set tile grid" ref={setTileGridRef}>
                   {tileSets.map((set) => (
                     <button
                       key={`tile-${set.id}`}

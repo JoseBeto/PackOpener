@@ -462,8 +462,8 @@ export default function RipRealmApp() {
     if (typeof window === 'undefined') return
 
     window.requestAnimationFrame(() => {
-      const mobile = window.matchMedia('(max-width: 640px)').matches
-      sleeveSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: mobile ? 'start' : 'center' })
+      // Scroll to top so that the flow-header (Choose Another Set, Sound toggle) buttons are visible
+      window.scroll({ top: 0, behavior: 'smooth' })
     })
   }, [view, currentPack.length])
 
@@ -1609,19 +1609,6 @@ export default function RipRealmApp() {
                   <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
                 </div>
               </motion.div>
-            )}
-
-            {lastPackEconomy && (
-              <div className="pack-economy-summary">
-                <div className="pack-econ-pill">Cost: -{lastPackEconomy.packCost}</div>
-                <div className="pack-econ-pill">Card rewards: +{lastPackEconomy.cardReward}</div>
-                <div className="pack-econ-pill">Mission rewards: +{lastPackEconomy.missionReward}</div>
-                <div className="pack-econ-pill">New cards: {lastPackEconomy.newCardsCount}</div>
-                <div className={`pack-econ-pill pack-econ-total ${lastPackEconomy.currencyDelta >= 0 ? 'is-positive' : 'is-negative'}`}>
-                  Net: {summaryNetCount >= 0 ? '+' : ''}{summaryNetCount}
-                </div>
-                <div className="pack-econ-balance">Balance: {formatCoins(lastPackEconomy.currencyAfter)} coins</div>
-              </div>
             )}
 
             {bestPull && (
