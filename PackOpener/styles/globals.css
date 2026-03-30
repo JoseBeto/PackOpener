@@ -736,12 +736,12 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow:hidden}
 
   /* Keep details-open scrolling tight: vertical only, no horizontal drift. */
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:100%;overflow:hidden}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:100%;overflow:hidden}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;min-height:100%;overflow:visible}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:visible}
 
-  /* Summary must remain scrollable; only clip accidental horizontal drift. */
-  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-x:hidden;overflow-y:visible}
+  /* Summary must remain scrollable; clip accidental horizontal drift only. */
+  .app-home .pack-opener-wrap.is-summary-view{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
   .field-label-packtype{order:-1;position:static}
@@ -851,6 +851,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .card-shell{max-width:none}
   .set-card-grid{grid-template-columns:1fr}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{min-height:0;height:100%}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{height:auto}
   .set-tile-grid{grid-auto-columns:minmax(142px,142px);max-height:none}
   .set-tile-card{min-height:120px}
   .set-carousel-track{grid-auto-columns:minmax(120px, 120px)}
