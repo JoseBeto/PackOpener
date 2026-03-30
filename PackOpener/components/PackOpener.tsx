@@ -398,6 +398,35 @@ export default function RipRealmApp() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const mediaQuery = window.matchMedia('(max-width: 640px)')
+    const applyScrollLock = () => {
+      const shouldLock = view === 'select' && mediaQuery.matches
+      document.documentElement.classList.toggle('lock-select-scroll', shouldLock)
+      document.body.classList.toggle('lock-select-scroll', shouldLock)
+    }
+
+    applyScrollLock()
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', applyScrollLock)
+    } else {
+      mediaQuery.addListener(applyScrollLock)
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', applyScrollLock)
+      } else {
+        mediaQuery.removeListener(applyScrollLock)
+      }
+      document.documentElement.classList.remove('lock-select-scroll')
+      document.body.classList.remove('lock-select-scroll')
+    }
+  }, [view])
+
+  useEffect(() => {
     if (!achievementToasts.length) return
     const timers = achievementToasts.map((toast) =>
       window.setTimeout(() => {
