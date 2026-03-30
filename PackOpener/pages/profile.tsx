@@ -272,16 +272,15 @@ export default function ProfilePage() {
   const quickJumpSets = useMemo(() => groupedBySet.slice(0, 10), [groupedBySet])
 
   useEffect(() => {
-    if (!isMobileProfile) return
     setExpandedSetIds((prev) => {
       const next: Record<string, boolean> = {}
       for (const group of groupedBySet) {
-        // Keep prior toggle state if present; default to collapsed for cleaner mobile browsing.
+        // Keep prior toggle state if present; default to collapsed for cleaner browsing on all screens.
         next[group.setId] = prev[group.setId] ?? false
       }
       return next
     })
-  }, [groupedBySet, isMobileProfile])
+  }, [groupedBySet])
 
   function handleExchangeAllDuplicates() {
     if (!progression) return
@@ -358,7 +357,9 @@ export default function ProfilePage() {
 
   function jumpToSet(setId: string) {
     if (typeof window === 'undefined') return
-    setMobileTab('collection')
+    if (isMobileProfile) {
+      setMobileTab('collection')
+    }
     setExpandedSetIds((prev) => ({ ...prev, [setId]: true }))
     window.requestAnimationFrame(() => {
       const el = document.getElementById(`profile-set-${setId}`)
@@ -481,7 +482,7 @@ export default function ProfilePage() {
 
         {showCollectionSection && (
           <>
-            {isMobileProfile && quickJumpSets.length > 1 && (
+            {quickJumpSets.length > 1 && (
               <div className="profile-set-jump-row" aria-label="Quick jump sets">
                 {quickJumpSets.map((group) => (
                   <button
@@ -519,19 +520,17 @@ export default function ProfilePage() {
                       <h2>{group.setName}</h2>
                       <div className="set-card-head-actions">
                         <span>{group.cards.length} pulls</span>
-                        {isMobileProfile && (
-                          <button
-                            type="button"
-                            className="set-card-collapse-btn"
-                            onClick={() => toggleSetExpanded(group.setId)}
-                            aria-expanded={Boolean(expandedSetIds[group.setId])}
-                          >
-                            {expandedSetIds[group.setId] ? 'Hide' : 'Show'}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="set-card-collapse-btn"
+                          onClick={() => toggleSetExpanded(group.setId)}
+                          aria-expanded={Boolean(expandedSetIds[group.setId])}
+                        >
+                          {expandedSetIds[group.setId] ? 'Hide' : 'Show'}
+                        </button>
                       </div>
                     </div>
-                    {(!isMobileProfile || expandedSetIds[group.setId]) && (
+                    {expandedSetIds[group.setId] && (
                       <div className="showcase-grid">
                         {group.cards.map((card, index) => (
                           <article key={`${card.id}-${card.latestPulledAt}-${index}`} className="showcase-item showcase-item-button" onClick={() => setFocusCard(card)}>

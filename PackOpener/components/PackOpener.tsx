@@ -1271,18 +1271,6 @@ export default function RipRealmApp() {
                 </div>
                 {error && <div className="error-text">Error: {error}</div>}
               </div>
-
-              <div className="economy-panel">
-                <div className="economy-row">
-                  <span>Coins</span>
-                  <strong>{formatCoins(progression.currency)}</strong>
-                </div>
-                <div className="economy-row">
-                  <span>Pack cost</span>
-                  <strong>{packOpenCost}</strong>
-                </div>
-                {!canAffordPack && <div className="economy-note">Earn more coins from higher-rarity pulls and duplicate exchanges.</div>}
-              </div>
             </div>
           </div>
         </section>

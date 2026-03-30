@@ -457,11 +457,11 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      } else if (chosenRareCategory === 'doubleRare') {
        rareCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'))
        rareCard.isHolo = true
-       rareCard.special = 'DoubleRare'
+       if (isPocketSet) rareCard.special = 'DoubleRare'
      } else if (chosenRareCategory === 'illustrationRare') {
        rareCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'))
        rareCard.isHolo = true
-       rareCard.special = 'Illustration'
+       if (isPocketSet) rareCard.special = 'Illustration'
      } else if (chosenRareCategory === 'ultraRare') {
        rareCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
        rareCard.isHolo = true
@@ -471,7 +471,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra'))
        )
        rareCard.isHolo = true
-       rareCard.special = 'SpecialIllustration'
+       if (isPocketSet) rareCard.special = 'SpecialIllustration'
      } else if (chosenRareCategory === 'hyperRare' || chosenRareCategory === 'goldRare') {
        const secretCandidates = pool.filter((c) => isGoldTier(c))
        if (secretCandidates.length > 0) {
@@ -480,7 +480,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          rareCard = pickByRarity('Ultra')
        }
        rareCard.isHolo = true
-       rareCard.special = 'GoldRare'
+       if (isPocketSet) rareCard.special = 'GoldRare'
      } else {
       rareCard = pickByRarity('Rare')
        rareCard.isHolo = true
@@ -601,11 +601,11 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      } else if (chosenBonusCategory === 'illustration') {
        bonusCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'))
        bonusCard.isHolo = true
-       bonusCard.special = 'Illustration'
+       if (isPocketSet) bonusCard.special = 'Illustration'
      } else if (chosenBonusCategory === 'doubleRare') {
        bonusCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'))
        bonusCard.isHolo = true
-       bonusCard.special = 'DoubleRare'
+       if (isPocketSet) bonusCard.special = 'DoubleRare'
      } else if (chosenBonusCategory === 'ultra') {
        bonusCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
        bonusCard.isHolo = true
@@ -615,7 +615,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra'))
        )
        bonusCard.isHolo = true
-       bonusCard.special = 'SpecialIllustration'
+       if (isPocketSet) bonusCard.special = 'SpecialIllustration'
      } else if (chosenBonusCategory === 'secret' || chosenBonusCategory === 'gold') {
        const secretCandidates = pool.filter((c) => isGoldTier(c))
        if (secretCandidates.length > 0) {
@@ -624,7 +624,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
          bonusCard = pickByRarity('Ultra')
        }
        bonusCard.isHolo = true
-       bonusCard.special = 'GoldRare'
+       if (isPocketSet) bonusCard.special = 'GoldRare'
      } else {
        bonusCard = pickByRarity('Rare')
        bonusCard.isHolo = true
