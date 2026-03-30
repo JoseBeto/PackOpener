@@ -58,7 +58,7 @@ async function fetchWithConcurrency<T>(
 }
 
 // Create an HTTPS request helper that bypasses certificate verification
-function fetchWithCertBypass(url: string): Promise<any> {
+function fetchWithCertBypass(url: string, timeoutMs: number = 90000): Promise<any> {
   return new Promise((resolve, reject) => {
     const request = https.get(url, { rejectUnauthorized: false }, (res) => {
       let data = ''
@@ -76,7 +76,7 @@ function fetchWithCertBypass(url: string): Promise<any> {
       })
     })
     request.on('error', reject)
-    request.setTimeout(90000, () => {
+    request.setTimeout(timeoutMs, () => {
       request.destroy()
       reject(new Error('Request timeout'))
     })
@@ -133,6 +133,49 @@ function mapSetPayload(detail: any): { id: string; name: string; releaseDate?: s
   }
 }
 
+async function enrichSetsWithKnownMetadata(
+  sets: Array<{ id: string; name: string; releaseDate?: string; logo?: string }>,
+): Promise<Array<{ id: string; name: string; releaseDate?: string; logo?: string }>> {
+  if (!sets.length) return sets
+
+  const knownSetIds = new Set(listCachedSets())
+  const targetIds = sets
+    .map((set) => set.id)
+    .filter((id) => knownSetIds.has(id))
+
+  if (!targetIds.length) return sets
+
+  const details = await fetchWithConcurrency(
+    targetIds,
+    (id) => fetchWithCertBypass(`${API_ROOT}/sets/${id}`, 25000),
+    4,
+  )
+
+  const metadataById = new Map<string, { name: string; releaseDate?: string; logo?: string }>()
+  for (const detail of details) {
+    const mapped = mapSetPayload(detail)
+    if (!mapped) continue
+    metadataById.set(mapped.id, {
+      name: mapped.name,
+      releaseDate: mapped.releaseDate,
+      logo: mapped.logo,
+    })
+  }
+
+  if (!metadataById.size) return sets
+
+  return sets.map((set) => {
+    const metadata = metadataById.get(set.id)
+    if (!metadata) return set
+    return {
+      ...set,
+      name: metadata.name || set.name,
+      releaseDate: metadata.releaseDate || set.releaseDate,
+      logo: metadata.logo || set.logo,
+    }
+  })
+}
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const refreshQuery = Array.isArray(req.query.refresh) ? req.query.refresh[0] : req.query.refresh
@@ -173,7 +216,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     try {
       const data = await fetchWithCertBypass(url)
-      const sets = (Array.isArray(data) ? data : [])
+      let sets = (Array.isArray(data) ? data : [])
         .map(mapSetPayload)
         .filter((set): set is NonNullable<typeof set> => Boolean(set))
 
@@ -182,6 +225,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!sets.length) {
         throw new Error('tcgdex returned no sets')
       }
+
+      // tcgdex /sets payload can omit releaseDate; enrich known local set IDs with per-set metadata.
+      sets = await enrichSetsWithKnownMetadata(sets)
       
       // Sort by release date, newest first
       sortSetsNewestFirst(sets)
