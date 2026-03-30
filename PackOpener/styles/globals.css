@@ -124,6 +124,8 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 .landing-card{display:flex;flex-direction:column;gap:14px;align-items:stretch}
 .landing-card-focus{padding:16px}
 .landing-open-button{width:100%;margin-top:4px}
+.landing-open-mobile-bar{display:none}
+.landing-open-button-mobile{width:min(560px, calc(100vw - 18px));min-height:46px}
 .selected-pack-card{display:flex;flex-direction:column;justify-content:space-between;gap:16px;position:relative;overflow:hidden;align-items:center;text-align:center}
 .selected-pack-card-inline{margin-top:14px;padding:14px 16px;align-items:stretch;text-align:left;gap:12px}
 .selected-pack-inline-main{display:flex;gap:14px;align-items:center;width:100%}
@@ -642,12 +644,11 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .header-quick-coins{padding:6px 8px}
   .header-quick-coins span{font-size:.6rem}
   .header-quick-coins strong{font-size:.78rem}
-  .site-main{padding:10px;padding-bottom:106px}
+  .site-main{padding:10px 10px calc(118px + var(--safe-bottom))}
   .app-nav-dock{bottom:8px;width:calc(100vw - 14px);grid-template-columns:1fr 1.18fr 1fr;padding:7px}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
-  .site-main{padding:10px}
-  .app-home .site-main{padding:8px 8px 10px}
+  .app-home .site-main{padding:8px 8px calc(174px + var(--safe-bottom))}
   .app-home .site-main{overflow:hidden}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
   .app-home .riprealm-page{display:flex;flex-direction:column;min-height:calc(100dvh - 76px)}
@@ -659,22 +660,29 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .pack-opener-wrap{gap:10px}
   .flow-shell{padding:12px 10px;border-radius:14px}
   .landing-shell{gap:10px}
-  .landing-card-focus{padding:12px;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:calc(100dvh - 148px);align-items:stretch}
+  .landing-card-focus{padding:12px 12px 76px;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:calc(100dvh - 148px);align-items:stretch}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
+  .field-label-packtype{order:-1;position:sticky;top:0;z-index:6;background:rgba(14,24,44,0.94);backdrop-filter:blur(8px)}
   .field-label{padding:10px;gap:6px}
   .field-label-packtype{padding-top:8px}
   .set-browser-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;min-height:0;height:100%}
   .set-tile-focus-section{display:flex;flex-direction:column;min-height:0}
   .set-tile-head{margin-bottom:6px}
   .set-tile-head span{display:none}
-  .set-tile-grid{flex:1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
+  .set-tile-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(156px,156px);grid-template-columns:none;gap:8px;max-height:none;overflow-x:auto;overflow-y:hidden;padding:0 2px 4px 0;scroll-snap-type:x mandatory}
+  .set-tile-card{min-height:128px;scroll-snap-align:start}
+  .set-tile-card .set-card-name{-webkit-line-clamp:2}
+  .set-tile-card .set-card-id{font-size:.68rem}
   .set-browser-actions{display:flex;gap:6px}
   .set-browser-actions .set-browser-open-btn{min-height:34px;font-size:.74rem;padding:6px 8px}
   .set-browser-actions .set-browser-open-btn:nth-child(2){display:none}
   .pack-details-toggle{display:block}
   .pack-type-side-panel{display:none}
   .pack-type-side-panel.is-open{display:block}
+  .landing-open-button{display:none}
+  .landing-open-mobile-bar{display:flex;position:fixed;left:0;right:0;bottom:calc(var(--safe-bottom) + 76px);z-index:96;justify-content:center;pointer-events:none;padding:0 9px}
+  .landing-open-mobile-bar .button{pointer-events:auto;box-shadow:0 16px 30px rgba(0,0,0,0.34), 0 0 0 1px rgba(120,232,255,0.2) inset}
   .selected-pack-card-inline{padding:12px;gap:10px}
   .selected-pack-inline-main{gap:10px;align-items:flex-start}
   .selected-pack-art-inline{min-width:92px;width:92px;min-height:102px}
@@ -714,7 +722,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .flow-header{align-items:flex-start;flex-direction:column}
   .flow-actions{width:100%;justify-content:center}
   .set-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px}
-  .set-tile-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
+  .set-tile-grid{grid-auto-columns:minmax(156px,156px);max-height:none}
   .set-carousel-track{grid-auto-columns:minmax(130px, 130px)}
   .status-panel{display:none}
   .economy-panel{display:none}
@@ -737,8 +745,9 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 }
 
 @media(max-width:480px){
-  .site-main{padding:8px}
+  .site-main{padding:8px 8px calc(112px + var(--safe-bottom))}
   .hero,.profile-wrap{padding:10px 10px;border-radius:14px}
+  .app-home .site-main{padding:8px 8px calc(166px + var(--safe-bottom))}
   .app-home .riprealm-page{min-height:calc(100dvh - 70px)}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -746,7 +755,9 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .card-shell{max-width:none}
   .set-card-grid{grid-template-columns:1fr}
   .landing-card-focus{min-height:calc(100dvh - 140px)}
-  .set-tile-grid{grid-template-columns:1fr;max-height:none}
+  .set-tile-grid{grid-auto-columns:minmax(142px,142px);max-height:none}
+  .set-tile-card{min-height:120px}
+  .landing-open-mobile-bar{bottom:calc(var(--safe-bottom) + 72px)}
   .set-carousel-track{grid-auto-columns:minmax(120px, 120px)}
   .set-browser-modal-grid{grid-template-columns:1fr}
   .card-name{font-size:0.86rem}
