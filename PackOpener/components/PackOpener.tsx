@@ -1185,12 +1185,6 @@ export default function RipRealmApp() {
               </div>
             </div>
           </div>
-
-          <div className="landing-open-mobile-bar" aria-label="Quick open actions">
-            <button className="button landing-open-button-mobile" onClick={preparePack} disabled={loading || pool.length === 0 || !canAffordPack}>
-              {loading ? 'Loading Cards...' : 'Load Pack Sleeve'}
-            </button>
-          </div>
         </section>
       )}
 
