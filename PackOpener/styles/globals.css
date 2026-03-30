@@ -708,15 +708,14 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .app-nav-dock{bottom:8px;width:calc(100vw - 14px);grid-template-columns:1fr 1.18fr 1fr;padding:7px}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
-  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom))}
-  .app-home .site-main{overflow:visible}
+  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));overflow:hidden}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
-  .app-home .riprealm-page{display:flex;flex-direction:column;min-height:calc(100dvh - 76px)}
+  .app-home .riprealm-page{display:flex;flex-direction:column;min-height:0;height:100%}
   .hero h1{font-size:1.15rem;margin:0 0 4px}
   .hero p{font-size:.84rem;line-height:1.4;margin:0 auto 10px;max-width:320px}
   .site-footer{display:none}
-  .riprealm-host{margin-top:8px;flex:1;display:flex;min-height:0}
-  .riprealm-host .pack-opener-wrap{flex:1;min-height:0}
+  .riprealm-host{margin-top:8px;flex:1;display:flex;min-height:0;height:100%}
+  .riprealm-host .pack-opener-wrap{flex:1;min-height:0;height:100%}
   .pack-opener-wrap{gap:10px}
   .flow-shell{padding:12px 10px;border-radius:14px}
   .landing-shell{gap:10px}
@@ -789,7 +788,9 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .status-panel{display:none}
   .economy-panel{display:none}
   .set-browser-modal-overlay{align-items:flex-end;padding:0}
-  .set-browser-modal-shell{width:100%;height:min(92dvh,92vh);border-radius:18px 18px 0 0;border-left:none;border-right:none;border-bottom:none;padding:12px 10px calc(14px + var(--safe-bottom))}
+  .set-browser-modal-shell{width:100%;height:min(96dvh,96vh);max-height:min(96dvh,96vh);border-radius:18px 18px 0 0;border-left:none;border-right:none;border-bottom:none;padding:calc(10px + var(--safe-top)) 10px calc(14px + var(--safe-bottom))}
+  .set-browser-modal-head{align-items:center}
+  .set-browser-modal-head .ghost-button{flex-shrink:0;min-height:38px;padding:8px 10px}
   .set-browser-modal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .achievement-toast-stack{right:10px;left:10px;max-width:none}
   .stage-spotlight-center{width:320px;height:220px;top:110px}
@@ -817,13 +818,13 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .site-main{padding:8px 8px calc(108px + var(--safe-bottom))}
   .hero,.profile-wrap{padding:10px 10px;border-radius:14px}
   .app-home .site-main{padding:8px 8px calc(118px + var(--safe-bottom))}
-  .app-home .riprealm-page{min-height:calc(100dvh - 70px)}
+  .app-home .riprealm-page{min-height:0;height:100%}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
   .achievement-grid{grid-template-columns:1fr}
   .card-shell{max-width:none}
   .set-card-grid{grid-template-columns:1fr}
-  .landing-card-focus{min-height:calc(100dvh - 140px)}
+  .landing-card-focus{min-height:0;height:100%}
   .set-tile-grid{grid-auto-columns:minmax(142px,142px);max-height:none}
   .set-tile-card{min-height:120px}
   .set-carousel-track{grid-auto-columns:minmax(120px, 120px)}

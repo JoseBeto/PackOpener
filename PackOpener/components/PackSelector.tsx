@@ -135,6 +135,25 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
   }, [isSetBrowserOpen])
 
   useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (!isSetBrowserOpen) return
+
+    const previousBodyOverflow = document.body.style.overflow
+    const previousBodyOverscroll = document.body.style.overscrollBehaviorY
+    const previousHtmlOverflow = document.documentElement.style.overflow
+
+    document.body.style.overflow = 'hidden'
+    document.body.style.overscrollBehaviorY = 'contain'
+    document.documentElement.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.body.style.overscrollBehaviorY = previousBodyOverscroll
+      document.documentElement.style.overflow = previousHtmlOverflow
+    }
+  }, [isSetBrowserOpen])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     try {
       const rawRecent = localStorage.getItem(RECENT_SET_IDS_KEY)
