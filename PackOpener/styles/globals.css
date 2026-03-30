@@ -487,7 +487,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
 .pack-econ-total.is-negative{border-color:rgba(239,83,80,.55);background:rgba(239,83,80,.14);color:#ffd4d1}
 .pack-econ-balance{width:100%;text-align:center;font-size:.8rem;color:#c7f5ff;font-weight:760}
 .summary-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
-.achievement-toast-stack{position:fixed;right:14px;bottom:14px;z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
+.achievement-toast-stack{position:fixed;right:14px;top:calc(14px + var(--safe-top));z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
 .achievement-toast{pointer-events:auto;border:1px solid rgba(120,246,212,0.55);background:linear-gradient(145deg, rgba(11,30,43,0.96), rgba(8,20,38,0.96));border-radius:12px;padding:10px 12px;box-shadow:0 16px 26px rgba(0,0,0,0.34), 0 0 0 1px rgba(120,246,212,0.16) inset}
 .achievement-toast-tag{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#a7ffe0}
 .achievement-toast strong{display:block;margin-top:4px;font-size:.88rem;color:#e8fff7}
@@ -741,7 +741,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;min-height:auto;overflow:visible}
 
   /* Summary must remain scrollable; clip accidental horizontal drift only. */
-  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(88px + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-y:visible;overflow-x:hidden;padding-bottom:calc(104px + var(--safe-bottom));overflow-anchor:none}
   .landing-copy{display:none}
   .control-row{gap:8px;align-content:start}
   .field-label-packtype{order:-1;position:static}
@@ -781,7 +781,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .selected-pack-art{min-height:132px}
   .selected-pack-sleeve{width:120px;height:150px}
   .sleeve-view-shell{overflow:hidden}
-  .summary-view-shell{overflow-x:hidden;overflow-y:visible}
+  .summary-view-shell{overflow-x:hidden;overflow-y:visible;overflow-anchor:none}
   .sleeve-stage-wrap{gap:10px;min-height:0;justify-content:flex-start;padding-bottom:8px}
   .sleeve-copy h3{margin:8px 0 4px;font-size:1.02rem}
   .sleeve-copy p{font-size:.8rem;line-height:1.3;max-width:300px}
@@ -792,7 +792,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .opening-card-info{min-height:42px}
   .card-name{font-size:.84rem}
   .card-meta{font-size:10px;line-height:1.2}
-  .opened-cards-wrap{gap:10px}
+  .opened-cards-wrap{gap:10px;padding-bottom:calc(24px + var(--safe-bottom))}
   .summary-ceremony-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .summary-bonus-breakdown{grid-template-columns:1fr}
   .best-pull-spotlight{padding:12px 12px;gap:12px}
@@ -818,7 +818,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .set-browser-modal-toolbar{position:sticky;top:52px;z-index:2;margin:0;padding:0 0 8px;background:linear-gradient(180deg, rgba(14,27,52,0.96), rgba(14,27,52,0.88) 76%, rgba(14,27,52,0))}
   .set-search-input{min-height:42px}
   .set-browser-modal-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;overflow:auto}
-  .achievement-toast-stack{right:10px;left:10px;max-width:none}
+  .achievement-toast-stack{right:10px;left:10px;top:calc(10px + var(--safe-top));max-width:none}
   .stage-spotlight-center{width:320px;height:220px;top:110px}
   .opened-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
   .summary-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:none}

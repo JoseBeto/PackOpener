@@ -574,23 +574,8 @@ export default function RipRealmApp() {
   useEffect(() => {
     if (view !== 'summary') return
     setCoinDisplayLock(false)
-    if (typeof window !== 'undefined') {
-      window.requestAnimationFrame(() => {
-        window.scrollTo({ top: 0, behavior: 'auto' })
-      })
-    }
     sfxRef.current.summary()
   }, [view])
-
-  useEffect(() => {
-    if (view !== 'sleeve') return
-    if (typeof window === 'undefined') return
-
-    window.requestAnimationFrame(() => {
-      // Scroll to top so that the flow-header (Choose Another Set, Sound toggle) buttons are visible
-      window.scroll({ top: 0, behavior: 'smooth' })
-    })
-  }, [view, currentPack.length])
 
   useEffect(() => {
     if (view !== 'summary' || !lastPackEconomy) {
