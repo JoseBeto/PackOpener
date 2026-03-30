@@ -23,21 +23,13 @@
       <stop offset="0%" stop-color="#7ef0ff" />
       <stop offset="100%" stop-color="#c79bff" />
     </linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur stdDeviation="12" result="b" />
-      <feMerge>
-        <feMergeNode in="b" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
   </defs>
   <rect width="512" height="512" rx="116" fill="url(#bg)" />
   <rect width="512" height="512" rx="116" fill="url(#aura)" />
-  <g opacity="0.82" filter="url(#glow)">
+  <g opacity="0.78">
     <path d="M93 182c40-58 119-86 193-71" fill="none" stroke="#63e6ff" stroke-width="16" stroke-linecap="round" opacity="0.82" />
     <path d="M226 77c62 3 124 38 164 96" fill="none" stroke="#9f7cff" stroke-width="14" stroke-linecap="round" opacity="0.72" />
     <path d="M408 202c18 62 5 132-34 187" fill="none" stroke="#78eaff" stroke-width="14" stroke-linecap="round" opacity="0.68" />
-    <path d="M128 354c-18-58-7-122 28-174" fill="none" stroke="#89ddff" stroke-width="12" stroke-linecap="round" opacity="0.58" />
   </g>
   <g transform="translate(256 262) rotate(-9)">
     <rect x="-126" y="-166" width="252" height="332" rx="34" fill="#061120" stroke="#9edcff" stroke-opacity="0.42" stroke-width="6" />
@@ -47,10 +39,5 @@
     <circle cx="0" cy="0" r="17" fill="#7ce9ff" opacity="0.94" />
     <circle cx="0" cy="0" r="67" fill="none" stroke="url(#swirl)" stroke-width="12" stroke-linecap="round" stroke-dasharray="252 72" />
     <circle cx="0" cy="0" r="92" fill="none" stroke="#72dfff" stroke-opacity="0.86" stroke-width="8" stroke-linecap="round" stroke-dasharray="154 66" transform="rotate(26)" />
-    <path d="M-84 24c30-43 84-64 136-50" fill="none" stroke="#c79bff" stroke-width="10" stroke-linecap="round" opacity="0.8" />
-    <path d="M-54 80c44 18 100 11 136-20" fill="none" stroke="#79ebff" stroke-width="9" stroke-linecap="round" opacity="0.82" />
-    <circle cx="-58" cy="-80" r="8" fill="#f9feff" />
-    <circle cx="68" cy="-52" r="6" fill="#9e81ff" />
-    <circle cx="44" cy="94" r="7" fill="#7ce9ff" />
   </g>
 </svg>

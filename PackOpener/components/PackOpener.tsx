@@ -52,6 +52,11 @@ type CoinFlyBurst = {
   id: number
   amount: number
   tone: HighlightTone
+  originX: number
+  originY: number
+  travelX: number
+  travelY: number
+  duration: number
 }
 
 type RewardTone = 'low' | 'mid' | 'high'
@@ -231,6 +236,7 @@ export default function RipRealmApp() {
   const sfxRef = useRef(getSfxEngine())
   const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
   const coinPreviewRef = useRef<number | null>(null)
+  const openingRewardRef = useRef<HTMLDivElement | null>(null)
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
   const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
@@ -302,6 +308,38 @@ export default function RipRealmApp() {
   function setCoinDisplayLock(locked: boolean, value?: number, options?: { pulse?: boolean; tone?: HighlightTone }) {
     if (typeof window === 'undefined') return
     window.dispatchEvent(new CustomEvent(COIN_DISPLAY_LOCK_EVENT, { detail: { locked, value, pulse: Boolean(options?.pulse), tone: options?.tone } }))
+  }
+
+  function getCoinCounterCenter(): { x: number; y: number } | null {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null
+    const coinEl = document.querySelector('.header-quick-coins') as HTMLElement | null
+    if (!coinEl) return null
+    const rect = coinEl.getBoundingClientRect()
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    }
+  }
+
+  function getCoinBurstOrigin(): { x: number; y: number } {
+    if (typeof window === 'undefined') {
+      return { x: 0, y: 0 }
+    }
+
+    const rewardRect = openingRewardRef.current?.getBoundingClientRect()
+    const fallback = {
+      x: window.innerWidth * 0.5,
+      y: window.innerHeight * 0.6,
+    }
+
+    if (!rewardRect || rewardRect.width <= 0 || rewardRect.height <= 0) {
+      return fallback
+    }
+
+    return {
+      x: rewardRect.left + rewardRect.width / 2,
+      y: rewardRect.top + rewardRect.height / 2,
+    }
   }
 
   function getPackOpeningTone(pack: Card[]): HighlightTone {
@@ -902,19 +940,31 @@ export default function RipRealmApp() {
   }
 
   function triggerCoinFlyBurst(amount: number, tone: HighlightTone) {
-    if (amount <= 0) return
+    if (amount <= 0 || typeof window === 'undefined') return
+
+    const origin = getCoinBurstOrigin()
+    const target = getCoinCounterCenter() ?? { x: window.innerWidth * 0.82, y: window.innerHeight * 0.12 }
+    const travelX = Math.round(target.x - origin.x)
+    const travelY = Math.round(target.y - origin.y)
+    const distance = Math.hypot(travelX, travelY)
+    const baseDuration = tone === 'secret' ? 2.44 : tone === 'ultra' ? 2.26 : tone === 'holo' ? 2.02 : 1.9
+    const distanceScale = Math.min(1.24, Math.max(0.84, distance / 500))
+    const duration = Number((baseDuration * distanceScale).toFixed(2))
 
     const burstId = Date.now() + Math.floor(Math.random() * 10000)
-    setCoinFlyBursts((prev) => [...prev, { id: burstId, amount, tone }])
+    setCoinFlyBursts((prev) => [
+      ...prev,
+      { id: burstId, amount, tone, originX: origin.x, originY: origin.y, travelX, travelY, duration },
+    ])
     window.setTimeout(() => {
       setCoinFlyBursts((prev) => prev.filter((item) => item.id !== burstId))
-    }, 2300)
+    }, Math.round(duration * 1000 + 220))
 
     const currentPreview = coinPreviewRef.current ?? progression.currency
     const nextPreview = currentPreview + amount
     coinPreviewRef.current = nextPreview
 
-    const flyDelay = tone === 'secret' ? 1040 : tone === 'ultra' ? 920 : tone === 'holo' ? 800 : 680
+    const flyDelay = Math.round(duration * 1000 * 0.76)
     window.setTimeout(() => {
       setCoinDisplayLock(true, nextPreview, { pulse: tone === 'ultra' || tone === 'secret', tone })
       sfxRef.current.coinTick(tone === 'secret' ? 0.95 : tone === 'ultra' ? 0.82 : 0.65)
@@ -1277,7 +1327,7 @@ export default function RipRealmApp() {
   }
 
   return (
-    <div className={`pack-opener-wrap ${shouldCollapseText ? 'compact-ui' : ''}`}>
+    <div className={`pack-opener-wrap is-${view}-view ${shouldCollapseText ? 'compact-ui' : ''}`}>
       {view === 'select' && (
         <section className="flow-shell landing-shell premium-stage premium-stage-select">
           <div className="stage-spotlight stage-spotlight-left" />
@@ -1707,7 +1757,11 @@ export default function RipRealmApp() {
                 {visibleCard.isHolo ? ' • Holo' : ''}
                 {visibleCard.special ? ` • ${specialLabel(visibleCard.special)}` : ''}
               </div>
-              {visibleCardReward > 0 && <div className="opening-card-reward">Card Reward: +{visibleCardReward} coins</div>}
+              {visibleCardReward > 0 && (
+                <div className="opening-card-reward" ref={openingRewardRef}>
+                  Card Reward: +{visibleCardReward} coins
+                </div>
+              )}
               {showRevealHint && remainingCards > 0 && (
                 <div className="reveal-helper">Swipe or tap the card to reveal the next one.</div>
               )}
@@ -1914,13 +1968,24 @@ export default function RipRealmApp() {
 
       <AnimatePresence>
         {coinFlyBursts.map((burst) => (
+          (() => {
+            const toneLift = burst.tone === 'secret' ? 136 : burst.tone === 'ultra' ? 118 : burst.tone === 'holo' ? 102 : 88
+            const travelLift = Math.max(68, Math.min(180, Math.abs(burst.travelY) * 0.58 + Math.abs(burst.travelX) * 0.1 + toneLift))
+            return (
           <motion.div
             key={burst.id}
             className={`coin-fly-burst coin-fly-${burst.tone}`}
-            initial={{ opacity: 0, x: 0, y: 8, scale: 0.62, rotate: -5 }}
-            animate={{ opacity: [0, 1, 1, 0.96, 0], x: [0, 70, 200, 320, 430], y: [8, -44, -128, -236, -350], scale: [0.62, 1.44, 1.3, 1.1, 1], rotate: [-5, -1, 2, 0, 0] }}
+            style={{ left: burst.originX, top: burst.originY }}
+            initial={{ opacity: 0, x: 0, y: 10, scale: 0.62, rotate: -5 }}
+            animate={{
+              opacity: [0, 1, 1, 0.96, 0],
+              x: [0, burst.travelX * 0.16, burst.travelX * 0.48, burst.travelX * 0.82, burst.travelX],
+              y: [10, burst.travelY * 0.14 - travelLift * 0.86, burst.travelY * 0.44 - travelLift, burst.travelY * 0.76 - travelLift * 0.38, burst.travelY],
+              scale: [0.62, 1.46, 1.34, 1.14, 1],
+              rotate: [-5, -1, 2, 0, 0],
+            }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 2.08, ease: [0.16, 0.86, 0.24, 1] }}
+            transition={{ duration: burst.duration, ease: [0.16, 0.86, 0.24, 1] }}
           >
             <span className="coin-fly-impact" aria-hidden="true" />
             <span className="coin-fly-trail" aria-hidden="true" />
@@ -1931,6 +1996,8 @@ export default function RipRealmApp() {
             <span className="coin-fly-spark coin-fly-spark-e" aria-hidden="true" />
             <span className="coin-fly-label">+{formatCoins(burst.amount)}</span>
           </motion.div>
+            )
+          })()
         ))}
       </AnimatePresence>
 
