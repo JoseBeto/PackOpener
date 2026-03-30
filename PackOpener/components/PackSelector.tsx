@@ -44,9 +44,17 @@ type Props = {
   packType: PackType
   onPackTypeChange: (v: PackType) => void
   packTypePanel?: React.ReactNode
+  onMobilePackDetailsOpenChange?: (isOpen: boolean) => void
 }
 
-export default function PackSelector({ setId, onSetIdChange, packType, onPackTypeChange, packTypePanel }: Props) {
+export default function PackSelector({
+  setId,
+  onSetIdChange,
+  packType,
+  onPackTypeChange,
+  packTypePanel,
+  onMobilePackDetailsOpenChange,
+}: Props) {
   const [sets, setSets] = useState<SetItem[]>([])
   const [loading, setLoading] = useState(false)
   const [setFamily, setSetFamily] = useState<SetFamily>(getSetFamily(setId) === 'pocket' ? 'pocket' : 'mainline')
@@ -273,6 +281,13 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
       activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
     }
   }, [setId])
+
+  useEffect(() => {
+    onMobilePackDetailsOpenChange?.(isMobilePackDetailsOpen)
+    return () => {
+      onMobilePackDetailsOpenChange?.(false)
+    }
+  }, [isMobilePackDetailsOpen, onMobilePackDetailsOpenChange])
 
   return (
     <>

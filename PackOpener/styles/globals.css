@@ -21,6 +21,7 @@ body::before{content:'';position:fixed;inset:-22%;pointer-events:none;z-index:-1
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background-image:radial-gradient(rgba(255,255,255,0.12) 0.6px, transparent 0.6px);background-size:3px 3px;opacity:.08;mix-blend-mode:screen;animation:grainShift 8s steps(8) infinite}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;overscroll-behavior:none}
+body.lock-select-scroll #__next{height:100%;overflow:hidden}
 .button{position:relative;overflow:hidden;background:linear-gradient(135deg, #67e8ff 0%, #2ce7ff 38%, #a66cff 100%);color:#041a24;padding:12px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:900;letter-spacing:.01em;transition:transform .2s cubic-bezier(.22,.61,.36,1), filter .2s ease, box-shadow .2s ease;min-height:46px;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;box-shadow:0 12px 26px rgba(80,216,255,0.34)}
 .button::after{content:'';position:absolute;inset:-120% auto -120% -48%;width:46%;background:linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,.6), rgba(255,255,255,0));transform:translateX(-120%) rotate(8deg);transition:transform .7s ease;pointer-events:none}
 .button:hover:not(:disabled){transform:translateY(-2px) scale(1.01);filter:brightness(1.09) saturate(1.08);box-shadow:0 16px 34px rgba(80,216,255,0.42)}
@@ -715,7 +716,7 @@ html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;over
   .app-nav-dock{bottom:8px;width:calc(100vw - 14px);grid-template-columns:1fr 1.18fr 1fr;padding:7px}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
-  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow:hidden}
+  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow:hidden;overscroll-behavior:none}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
   .app-home .riprealm-page{display:flex;flex-direction:column;min-height:0}
   .hero h1{font-size:1.15rem;margin:0 0 4px}
@@ -803,10 +804,10 @@ html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;over
   .status-panel{display:none}
   .economy-panel{display:none}
   .set-browser-modal-overlay{align-items:flex-end;padding:0}
-  .set-browser-modal-shell{width:100%;height:min(82dvh,82vh);max-height:min(82dvh,82vh);border-radius:18px 18px 0 0;border-left:none;border-right:none;border-bottom:none;padding:10px 10px calc(12px + var(--safe-bottom));overflow:hidden;grid-template-rows:auto auto minmax(0,1fr)}
-  .set-browser-modal-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;flex-wrap:nowrap;position:relative;top:auto;z-index:1;margin:0;padding:0;background:none}
+  .set-browser-modal-shell{position:relative;width:100%;height:min(74dvh,74vh);max-height:min(74dvh,74vh);border-radius:18px 18px 0 0;border-left:none;border-right:none;border-bottom:none;padding:10px 10px calc(12px + var(--safe-bottom));overflow:hidden;grid-template-rows:auto auto minmax(0,1fr)}
+  .set-browser-modal-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:10px;flex-wrap:nowrap;position:sticky;top:0;z-index:3;margin:0;padding:2px 0 8px;background:linear-gradient(180deg, rgba(14,27,52,0.98), rgba(14,27,52,0.92) 72%, rgba(14,27,52,0))}
   .set-browser-modal-head .ghost-button{flex-shrink:0;align-self:start;min-height:38px;padding:8px 10px}
-  .set-browser-modal-toolbar{position:relative;top:auto;z-index:1;margin:0;padding:0;background:none}
+  .set-browser-modal-toolbar{position:sticky;top:52px;z-index:2;margin:0;padding:0 0 8px;background:linear-gradient(180deg, rgba(14,27,52,0.96), rgba(14,27,52,0.88) 76%, rgba(14,27,52,0))}
   .set-search-input{min-height:42px}
   .set-browser-modal-grid{grid-template-columns:repeat(2,minmax(0,1fr));min-height:0;overflow:auto}
   .achievement-toast-stack{right:10px;left:10px;max-width:none}
@@ -848,7 +849,7 @@ html.lock-select-scroll,body.lock-select-scroll{height:100%;overflow:hidden;over
   .set-browser-modal-grid{grid-template-columns:1fr}
   .set-browser-modal-head{grid-template-columns:1fr}
   .set-browser-modal-head .ghost-button{width:100%}
-  .set-browser-modal-toolbar{top:auto}
+  .set-browser-modal-toolbar{top:98px}
   .card-name{font-size:0.86rem}
   .card-meta{font-size:10px}
   .deck{width:min(76vw, 220px)}
