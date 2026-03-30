@@ -6,6 +6,7 @@ import { simulatePack, type Card } from '../lib/simulator'
 import { addShowcasePulls } from '../lib/showcase'
 import {
   applyPackProgression,
+  claimSetCompletionMilestones,
   createDefaultProgressionState,
   getMissionStatuses,
   getPackOpenCost,
@@ -40,10 +41,17 @@ type PackEconomySummary = {
   packCost: number
   cardReward: number
   missionReward: number
+  milestoneReward: number
   totalReward: number
   currencyDelta: number
   currencyAfter: number
   newCardsCount: number
+}
+
+type CoinFlyBurst = {
+  id: number
+  amount: number
+  tone: HighlightTone
 }
 
 type RewardTone = 'low' | 'mid' | 'high'
@@ -63,6 +71,13 @@ function getRewardTone(reward: number): RewardTone {
   if (reward >= 100) return 'high'
   if (reward >= 60) return 'mid'
   return 'low'
+}
+
+function getSetMilestoneReward(threshold: number): number {
+  if (threshold >= 100) return 1200
+  if (threshold >= 75) return 700
+  if (threshold >= 50) return 400
+  return 200
 }
 
 function parseReleaseDate(value?: string): number {
@@ -187,6 +202,7 @@ export default function RipRealmApp() {
   const [summaryRewardCount, setSummaryRewardCount] = useState(0)
   const [summaryNetCount, setSummaryNetCount] = useState(0)
   const [achievementToasts, setAchievementToasts] = useState<AchievementToast[]>([])
+  const [coinFlyBursts, setCoinFlyBursts] = useState<CoinFlyBurst[]>([])
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const sleeveSectionRef = useRef<HTMLElement | null>(null)
   const suppressClickRef = useRef(false)
@@ -213,6 +229,7 @@ export default function RipRealmApp() {
   const sfxRef = useRef(getSfxEngine())
   const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
   const pendingAchievementToastsRef = useRef<AchievementToast[]>([])
+  const coinPreviewRef = useRef<number | null>(null)
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
   const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
@@ -668,7 +685,12 @@ export default function RipRealmApp() {
       sfxRef.current.flip()
       if (highlight.label) sfxRef.current.rarity(highlight.tone)
       if (visibleCardReward > 0) {
-        sfxRef.current.coinBurst(visibleCardReward, highlight.tone)
+        triggerCoinFlyBurst(visibleCardReward, highlight.tone)
+        if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
+          window.setTimeout(() => {
+            sfxRef.current.coinBurst(visibleCardReward, highlight.tone)
+          }, 260)
+        }
       }
       sfxRef.current.cardLand(highlight.tone === 'secret' ? 0.95 : highlight.tone === 'ultra' ? 0.82 : highlight.tone === 'holo' ? 0.64 : 0.5)
 
@@ -854,6 +876,8 @@ export default function RipRealmApp() {
     setIsTransitioning(false)
     setSwipeDirection(1)
     setIsGodPackOpen(false)
+    setCoinFlyBursts([])
+    coinPreviewRef.current = null
     if (nextView === 'select') {
       setCoinDisplayLock(false)
     }
@@ -865,6 +889,40 @@ export default function RipRealmApp() {
   function markRevealInteraction() {
     setShowRevealHint(false)
     setHintActivityTick((prev) => prev + 1)
+  }
+
+  function getSetCompletionRatio(state: ProgressionState, activeSetId: string, cardPool: Card[]): number {
+    const uniquePoolIds = new Set(cardPool.map((card) => card.id).filter(Boolean))
+    if (uniquePoolIds.size === 0) return 0
+
+    let ownedUnique = 0
+    for (const cardId of uniquePoolIds) {
+      if ((state.collection[`${activeSetId}:${cardId}`] || 0) > 0) {
+        ownedUnique += 1
+      }
+    }
+
+    return ownedUnique / uniquePoolIds.size
+  }
+
+  function triggerCoinFlyBurst(amount: number, tone: HighlightTone) {
+    if (amount <= 0) return
+
+    const burstId = Date.now() + Math.floor(Math.random() * 10000)
+    setCoinFlyBursts((prev) => [...prev, { id: burstId, amount, tone }])
+    window.setTimeout(() => {
+      setCoinFlyBursts((prev) => prev.filter((item) => item.id !== burstId))
+    }, 900)
+
+    const currentPreview = coinPreviewRef.current ?? progression.currency
+    const nextPreview = currentPreview + amount
+    coinPreviewRef.current = nextPreview
+
+    const flyDelay = tone === 'secret' || tone === 'ultra' ? 260 : 120
+    window.setTimeout(() => {
+      setCoinDisplayLock(true, nextPreview)
+      sfxRef.current.coinTick(tone === 'secret' ? 0.95 : tone === 'ultra' ? 0.82 : 0.65)
+    }, flyDelay)
   }
 
   function buildPack() {
@@ -891,16 +949,42 @@ export default function RipRealmApp() {
       return null
     }
 
-    applyProgressionUpdate(outcome.nextState)
-    recordSessionPackOpen(pack, setId, outcome.currencyDelta)
+    const milestoneOutcome = claimSetCompletionMilestones(
+      outcome.nextState,
+      setId,
+      getSetCompletionRatio(outcome.nextState, setId, pool),
+    )
+    const milestoneReward = milestoneOutcome.reward
+    const totalReward = outcome.totalReward + milestoneReward
+    const currencyDelta = totalReward - outcome.packCost
+
+    if (milestoneOutcome.claimedThresholds.length > 0) {
+      const setName = setNames[setId] || setId.toUpperCase()
+      const milestoneToasts: AchievementToast[] = milestoneOutcome.claimedThresholds.map((threshold) => ({
+        id: `set-${setId}-${threshold}-${milestoneOutcome.nextState.stats.lifetimePacksOpened}`,
+        label: 'Set Milestone Chest',
+        description: `${setName} ${threshold}% complete • +${formatCoins(getSetMilestoneReward(threshold))} coins`,
+        tag: 'Collection Milestone',
+        tone: 'mission',
+      }))
+      const existingPending = new Set(pendingAchievementToastsRef.current.map((item) => item.id))
+      const additions = milestoneToasts.filter((item) => !existingPending.has(item.id))
+      if (additions.length > 0) {
+        pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
+      }
+    }
+
+    applyProgressionUpdate(milestoneOutcome.nextState)
+    recordSessionPackOpen(pack, setId, currencyDelta)
     setCurrentPackNewFlags(outcome.newCardFlags)
     setLastPackEconomy({
       packCost: outcome.packCost,
       cardReward: outcome.cardReward,
       missionReward: outcome.missionReward,
-      totalReward: outcome.totalReward,
-      currencyDelta: outcome.currencyDelta,
-      currencyAfter: outcome.nextState.currency,
+      milestoneReward,
+      totalReward,
+      currencyDelta,
+      currencyAfter: milestoneOutcome.nextState.currency,
       newCardsCount: outcome.newCardsCount,
     })
     addShowcasePulls(setId, pack)
@@ -909,9 +993,11 @@ export default function RipRealmApp() {
   }
 
   function preparePack() {
+    coinPreviewRef.current = progression.currency
     setCoinDisplayLock(true, progression.currency)
     const pack = buildPack()
     if (!pack) {
+      coinPreviewRef.current = null
       setCoinDisplayLock(false)
       return
     }
@@ -1294,6 +1380,9 @@ export default function RipRealmApp() {
               </button>
             </div>
             <div className="flow-meta">{packTypeLabel} • {setDisplayName}{isGodPackOpen ? ' • ⚡ GOD PACK' : ''}</div>
+          </div>
+
+          <div className="sleeve-stage-wrap">
             <div className="sleeve-copy">
               {isGodPackOpen && (
                 <div className="god-pack-badge" aria-label="God Pack">
@@ -1667,8 +1756,8 @@ export default function RipRealmApp() {
                     <strong>{bestPullHighlight.label || 'Base Pull'}</strong>
                   </div>
                   <div className="summary-ceremony-chip">
-                    <span>Mission Progress</span>
-                    <strong>+{lastPackEconomy.missionReward}</strong>
+                    <span>Side Quests</span>
+                    <strong>+{lastPackEconomy.missionReward + lastPackEconomy.milestoneReward}</strong>
                   </div>
                   <div className="summary-ceremony-chip">
                     <span>Pack Net</span>
@@ -1686,6 +1775,9 @@ export default function RipRealmApp() {
                 <div className="summary-new-row">
                   <span>New Spotlight</span>
                   <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
+                  {lastPackEconomy.milestoneReward > 0 && (
+                    <strong>Set milestone chest: +{formatCoins(lastPackEconomy.milestoneReward)} coins</strong>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -1815,6 +1907,21 @@ export default function RipRealmApp() {
           </div>
         </section>
       )}
+
+      <AnimatePresence>
+        {coinFlyBursts.map((burst) => (
+          <motion.div
+            key={burst.id}
+            className={`coin-fly-burst coin-fly-${burst.tone}`}
+            initial={{ opacity: 0, x: 0, y: 0, scale: 0.9 }}
+            animate={{ opacity: [0, 1, 1, 0], x: 340, y: -350, scale: [0.9, 1.04, 0.86, 0.7] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.88, ease: [0.2, 0.9, 0.25, 1] }}
+          >
+            +{formatCoins(burst.amount)}
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       <CardZoomModal
         open={Boolean(focusCard)}

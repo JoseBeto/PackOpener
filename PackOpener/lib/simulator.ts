@@ -65,7 +65,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const packType = opts?.packType || 'standard'
   const isPocketSet = getSetFamily(setId) === 'pocket'
   const baseGodPackRate = isPocketSet ? 0.0006 : 0.00035
-  const GOD_PACK_RATE = packType === 'premium' ? baseGodPackRate * 1.5 : baseGodPackRate
+  const GOD_PACK_RATE = packType === 'premium' ? baseGodPackRate * 2 : baseGodPackRate
 
   // Get rarity weight map from packDef or use defaults
   const rarityWeightMap = packDef.rarityWeightMap || new Map([

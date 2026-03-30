@@ -45,6 +45,7 @@ export type MissionProgress = {
 export type ProgressionState = {
   currency: number
   collection: Record<string, number>
+  setMilestonesClaimed: Record<string, boolean>
   stats: {
     lifetimePacksOpened: number
     lifetimeGoodPulls: number
@@ -109,6 +110,17 @@ const WEEKLY_MISSIONS: MissionDefinition[] = [
   { id: 'weekly-sets-5', kind: 'weekly', label: 'Open packs from 5 sets', target: 5, reward: 600, metric: 'distinctSetsOpened' },
 ]
 
+const SET_COMPLETION_MILESTONES: Array<{ threshold: number; reward: number }> = [
+  { threshold: 0.25, reward: 200 },
+  { threshold: 0.5, reward: 400 },
+  { threshold: 0.75, reward: 700 },
+  { threshold: 1, reward: 1200 },
+]
+
+function getSetMilestoneKey(setId: string, threshold: number): string {
+  return `${setId}:${Math.round(threshold * 100)}`
+}
+
 function toDailyPeriodKey(date: Date): string {
   const y = date.getUTCFullYear()
   const m = String(date.getUTCMonth() + 1).padStart(2, '0')
@@ -172,6 +184,7 @@ export function createDefaultProgressionState(date = new Date()): ProgressionSta
   return {
     currency: 1000,
     collection: {},
+    setMilestonesClaimed: {},
     stats: {
       lifetimePacksOpened: 0,
       lifetimeGoodPulls: 0,
@@ -202,6 +215,13 @@ export function normalizeProgressionState(input: unknown, now = new Date()): Pro
   const next: ProgressionState = {
     currency: typeof raw.currency === 'number' && Number.isFinite(raw.currency) ? Math.max(0, Math.floor(raw.currency)) : fallback.currency,
     collection: raw.collection && typeof raw.collection === 'object' ? { ...raw.collection } : {},
+    setMilestonesClaimed:
+      raw.setMilestonesClaimed && typeof raw.setMilestonesClaimed === 'object'
+        ? Object.entries(raw.setMilestonesClaimed).reduce<Record<string, boolean>>((acc, [key, value]) => {
+            if (typeof key === 'string' && typeof value === 'boolean') acc[key] = value
+            return acc
+          }, {})
+        : {},
     stats: {
       lifetimePacksOpened: Math.max(0, Math.floor(raw.stats?.lifetimePacksOpened || 0)),
       lifetimeGoodPulls: Math.max(0, Math.floor(raw.stats?.lifetimeGoodPulls || 0)),
@@ -248,6 +268,48 @@ export function normalizeProgressionState(input: unknown, now = new Date()): Pro
   }
 
   return applyPeriodResets(next, now)
+}
+
+export function claimSetCompletionMilestones(
+  state: ProgressionState,
+  setId: string,
+  completionRatio: number,
+): { nextState: ProgressionState; reward: number; claimedThresholds: number[] } {
+  const completion = Math.max(0, Math.min(1, completionRatio || 0))
+  const claimed = { ...state.setMilestonesClaimed }
+  const claimedThresholds: number[] = []
+  let reward = 0
+
+  for (const milestone of SET_COMPLETION_MILESTONES) {
+    if (completion < milestone.threshold) continue
+    const key = getSetMilestoneKey(setId, milestone.threshold)
+    if (claimed[key]) continue
+    claimed[key] = true
+    reward += milestone.reward
+    claimedThresholds.push(Math.round(milestone.threshold * 100))
+  }
+
+  if (reward <= 0) {
+    return {
+      nextState: state,
+      reward: 0,
+      claimedThresholds: [],
+    }
+  }
+
+  return {
+    nextState: {
+      ...state,
+      currency: state.currency + reward,
+      setMilestonesClaimed: claimed,
+      stats: {
+        ...state.stats,
+        totalCoinsEarned: state.stats.totalCoinsEarned + reward,
+      },
+    },
+    reward,
+    claimedThresholds,
+  }
 }
 
 export function loadProgressionState(now = new Date()): ProgressionState {
@@ -304,12 +366,13 @@ export function applyPeriodResets(state: ProgressionState, now = new Date()): Pr
 
 export function getCardPullReward(rarity?: string, special?: string): number {
   const rank = getRarityRank(rarity, special)
-  if (rank >= 10) return 320
-  if (rank >= 9) return 260
-  if (rank >= 8) return 210
-  if (rank >= 7) return 160
-  if (rank >= 6) return 125
-  if (rank >= 5) return 100
+  if (rank >= 10) return 500
+  if (rank >= 9) return 400
+  if (rank >= 8) return 320
+  if (rank >= 7) return 240
+  if (rank >= 6) return 190
+  if (rank >= 5) return 145
+  if (rank >= 4) return 35
   return 0
 }
 
