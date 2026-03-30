@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getSetsFromCacheWithMeta, setSetsCache } from '../../lib/cacheManager'
+import { getSetsFromCacheWithMeta, listCachedSets, setSetsCache } from '../../lib/cacheManager'
 import https from 'https'
 
 // Disable SSL certificate verification for development
@@ -39,21 +39,6 @@ function sortSetsNewestFirst<T extends { id: string; name: string; releaseDate?:
   })
 }
 
-// Helper to fetch with concurrency limit
-async function fetchWithConcurrency<T>(
-  items: string[],
-  fetchFn: (item: string) => Promise<T>,
-  concurrency: number = 5
-): Promise<T[]> {
-  const results: T[] = []
-  for (let i = 0; i < items.length; i += concurrency) {
-    const batch = items.slice(i, i + concurrency)
-    const batchResults = await Promise.all(batch.map(fetchFn))
-    results.push(...batchResults)
-  }
-  return results
-}
-
 // Create an HTTPS request helper that bypasses certificate verification
 function fetchWithCertBypass(url: string): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -88,6 +73,13 @@ const FILE_CACHE_TTL = 1000 * 60 * 30 // 30 minutes
 // Empty fallback - forces fresh fetch from tcgdex on every error
 const FALLBACK_SETS: Array<{ id: string; name: string }> = []
 
+function deriveSetsFromCardCache(): Array<{ id: string; name: string; releaseDate?: string; logo?: string }> {
+  const ids = listCachedSets()
+  return ids
+    .map((id) => ({ id, name: id.toUpperCase() }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const refreshQuery = Array.isArray(req.query.refresh) ? req.query.refresh[0] : req.query.refresh
@@ -96,9 +88,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Check in-memory cache first
-    if (!forceRefresh && inMemoryCache && Date.now() - inMemoryCache.ts < CACHE_TTL) {
+    if (!forceRefresh && inMemoryCache && inMemoryCache.sets.length > 0 && Date.now() - inMemoryCache.ts < CACHE_TTL) {
       console.log('[Sets] Returning cached sets from memory')
       return res.status(200).json({ count: inMemoryCache.sets.length, sets: inMemoryCache.sets, source: 'memory-cache' })
+    }
+    if (inMemoryCache && inMemoryCache.sets.length === 0) {
+      inMemoryCache = null
     }
 
     // Check file cache second
@@ -124,31 +119,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('[Sets] URL:', url)
     
     try {
-      const url = `${API_ROOT}/sets`
-      console.log('[Sets] URL:', url)
-      
       const data = await fetchWithCertBypass(url)
-      console.log(`[Sets] ✓ Fetched ${data.length || 0} sets from tcgdex.net`)
-      
-      // Fetch individual set details to get release dates
-      console.log('[Sets] Fetching set details for release dates...')
-      const setIds = data.map((s: any) => s.id)
-      const setDetails = await fetchWithConcurrency(
-        setIds,
-        (id: string) => fetchWithCertBypass(`${API_ROOT}/sets/${id}`),
-        5 // Limit to 5 concurrent requests
-      )
-      
-      const sets = setDetails.map((detail: any) => {
-        // TCGDex logo URL: detail.logo is a base URL without extension
-        const logo = detail.logo ? `${detail.logo}.png` : undefined
-        return {
-          id: detail.id,
-          name: detail.name,
-          releaseDate: detail.releaseDate,
-          ...(logo && { logo }),
-        }
-      })
+      const sets = (Array.isArray(data) ? data : [])
+        .map((detail: any) => {
+          const id = typeof detail?.id === 'string' ? detail.id : ''
+          const name = typeof detail?.name === 'string' && detail.name.trim() ? detail.name : id.toUpperCase()
+          const releaseDate = typeof detail?.releaseDate === 'string' ? detail.releaseDate : undefined
+          const logo = detail?.logo ? `${detail.logo}.png` : undefined
+          return {
+            id,
+            name,
+            releaseDate,
+            ...(logo && { logo }),
+          }
+        })
+        .filter((set) => Boolean(set.id) && Boolean(set.name))
+
+      console.log(`[Sets] ✓ Fetched ${sets.length} sets from tcgdex.net`)
+
+      if (!sets.length) {
+        throw new Error('tcgdex returned no sets')
+      }
       
       // Sort by release date, newest first
       sortSetsNewestFirst(sets)
@@ -170,10 +161,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       inMemoryCache = { ts: Date.now(), sets: staleCacheSets }
       return res.status(200).json({ count: staleCacheSets.length, sets: staleCacheSets, source: 'stale-file-cache', error: err.message })
     }
+
+    const derivedFallbackSets = deriveSetsFromCardCache()
+    if (derivedFallbackSets.length > 0) {
+      console.log(`[Sets] Returning derived fallback (${derivedFallbackSets.length} sets) from cached card files`)
+      inMemoryCache = { ts: Date.now(), sets: derivedFallbackSets }
+      return res.status(200).json({ count: derivedFallbackSets.length, sets: derivedFallbackSets, source: 'derived-cache-fallback', error: err.message })
+    }
+
     console.log(`[Sets] Returning fallback sets (${FALLBACK_SETS.length} sets)`)
-    // on error, return fallback list
-    inMemoryCache = { ts: Date.now(), sets: FALLBACK_SETS }
-    setSetsCache(FALLBACK_SETS)
+    // Return fallback list but do not persist empty fallback to cache.
     return res.status(200).json({ count: FALLBACK_SETS.length, sets: FALLBACK_SETS, source: 'fallback', error: err.message })
   }
 }
