@@ -79,7 +79,7 @@ export default function MissionsPage() {
         },
       ])
     } else {
-      const message = 'Check-in already claimed for this 12-hour window. Come back at the next reset.'
+      const message = 'Check-in already claimed for today. Come back at the next daily reset.'
       setCheckInMessage(message)
       setCheckInToasts((prev) => [
         ...prev,
@@ -118,8 +118,12 @@ export default function MissionsPage() {
             onClick={handleDailyCheckIn}
             disabled={Boolean(progression?.daily.checkInClaimed)}
           >
-            {progression?.daily.checkInClaimed ? 'Claimed for this 12-hour window' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
+            {progression?.daily.checkInClaimed ? 'Claimed for today' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
           </button>
+          <div className="daily-checkin-note">
+            {progression?.daily.checkInClaimed ? 'Next check-in in ' : 'Daily reset in '}
+            <strong>{formatCountdown(msUntilDailyReset)}</strong>
+          </div>
           {checkInMessage ? <div className="daily-checkin-note">{checkInMessage}</div> : null}
         </div>
 

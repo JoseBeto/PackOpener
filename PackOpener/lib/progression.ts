@@ -14,15 +14,10 @@ export function getPackOpenCost(packType: PackType): number {
 }
 
 export function getMsUntilNextDailyReset(now = new Date()): number {
-  const nextUtcHalfDay = new Date(now.getTime())
-  nextUtcHalfDay.setUTCMinutes(0, 0, 0)
-  const currentHour = nextUtcHalfDay.getUTCHours()
-  if (currentHour < 12) {
-    nextUtcHalfDay.setUTCHours(12)
-  } else {
-    nextUtcHalfDay.setUTCHours(24)
-  }
-  return Math.max(0, nextUtcHalfDay.getTime() - now.getTime())
+  const nextUtcMidnight = new Date(now.getTime())
+  nextUtcMidnight.setUTCMinutes(0, 0, 0)
+  nextUtcMidnight.setUTCHours(24)
+  return Math.max(0, nextUtcMidnight.getTime() - now.getTime())
 }
 
 export function getMsUntilNextWeeklyReset(now = new Date()): number {
@@ -131,12 +126,11 @@ function getSetMilestoneKey(setId: string, threshold: number): string {
   return `${setId}:${Math.round(threshold * 100)}`
 }
 
-function toDailyPeriodKey(date: Date): string {
+function toDailyKey(date: Date): string {
   const y = date.getUTCFullYear()
   const m = String(date.getUTCMonth() + 1).padStart(2, '0')
   const d = String(date.getUTCDate()).padStart(2, '0')
-  const period = date.getUTCHours() < 12 ? 'A' : 'B'
-  return `${y}-${m}-${d}-${period}`
+  return `${y}-${m}-${d}`
 }
 
 function toWeekKey(date: Date): string {
@@ -150,23 +144,32 @@ function toWeekKey(date: Date): string {
 
 function fromDateKey(key?: string): Date | null {
   if (!key) return null
+
+  const dailyMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (dailyMatch) {
+    return new Date(Date.UTC(Number(dailyMatch[1]), Number(dailyMatch[2]) - 1, Number(dailyMatch[3]), 0))
+  }
+
+  // Legacy key support from older daily half-day format.
   const periodMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})-([AB])$/)
   if (periodMatch) {
     const hour = periodMatch[4] === 'B' ? 12 : 0
     return new Date(Date.UTC(Number(periodMatch[1]), Number(periodMatch[2]) - 1, Number(periodMatch[3]), hour))
   }
 
-  // Legacy key support from older daily-at-midnight format.
-  const legacyMatch = key.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!legacyMatch) return null
-  return new Date(Date.UTC(Number(legacyMatch[1]), Number(legacyMatch[2]) - 1, Number(legacyMatch[3]), 0))
+  return null
 }
 
 function diffDaysFromKeys(previousKey: string, nextKey: string): number | null {
-  const prev = fromDateKey(previousKey)
-  const next = fromDateKey(nextKey)
+  const prevRaw = fromDateKey(previousKey)
+  const nextRaw = fromDateKey(nextKey)
+  if (!prevRaw || !nextRaw) return null
+
+  // Compare by UTC day boundaries to support both current daily and legacy half-day keys.
+  const prev = new Date(Date.UTC(prevRaw.getUTCFullYear(), prevRaw.getUTCMonth(), prevRaw.getUTCDate()))
+  const next = new Date(Date.UTC(nextRaw.getUTCFullYear(), nextRaw.getUTCMonth(), nextRaw.getUTCDate()))
   if (!prev || !next) return null
-  const diff = Math.floor((next.getTime() - prev.getTime()) / (12 * 60 * 60 * 1000))
+  const diff = Math.floor((next.getTime() - prev.getTime()) / (24 * 60 * 60 * 1000))
   return Number.isFinite(diff) ? diff : null
 }
 
@@ -190,7 +193,7 @@ function cloneMissionMap(map: Record<string, MissionProgress>): Record<string, M
 }
 
 export function createDefaultProgressionState(date = new Date()): ProgressionState {
-  const dayKey = toDailyPeriodKey(date)
+  const dayKey = toDailyKey(date)
   return {
     currency: 1000,
     collection: {},
@@ -205,7 +208,7 @@ export function createDefaultProgressionState(date = new Date()): ProgressionSta
       lastCheckInKey: dayKey,
     },
     daily: {
-      key: toDailyPeriodKey(date),
+      key: toDailyKey(date),
       checkInClaimed: false,
       missions: makeMissionMap(DAILY_MISSIONS),
     },
@@ -344,7 +347,7 @@ export function saveProgressionState(state: ProgressionState) {
 }
 
 export function applyPeriodResets(state: ProgressionState, now = new Date()): ProgressionState {
-  const dayKey = toDailyPeriodKey(now)
+  const dayKey = toDailyKey(now)
   const weekKey = toWeekKey(now)
 
   let next = state
