@@ -175,15 +175,18 @@ export default function ProfilePage() {
 
   const topSetOwnership = useMemo(() => {
     if (!progression) return [] as Array<{ setId: string; owned: number }>
-    const bySet: Record<string, number> = {}
-    for (const [key, count] of Object.entries(progression.collection)) {
+    const bySet: Record<string, Set<string>> = {}
+    // Count unique card IDs per set (not total copies)
+    for (const key of Object.keys(progression.collection)) {
       const sep = key.indexOf(':')
       if (sep <= 0) continue
       const setId = key.slice(0, sep)
-      bySet[setId] = (bySet[setId] || 0) + count
+      const cardId = key.slice(sep + 1)
+      if (!bySet[setId]) bySet[setId] = new Set()
+      bySet[setId].add(cardId)
     }
     return Object.entries(bySet)
-      .map(([setId, owned]) => ({ setId, owned }))
+      .map(([setId, cardIds]) => ({ setId, owned: cardIds.size }))
       .sort((a, b) => b.owned - a.owned)
       .slice(0, 6)
   }, [progression])
