@@ -82,11 +82,11 @@ export default function MissionsPage() {
           <div className="missions-head">Daily Check-in</div>
           <button
             type="button"
-            className="ghost-button daily-checkin-btn"
+            className={`ghost-button daily-checkin-btn ${progression?.daily.checkInClaimed ? 'is-claimed' : ''}`}
             onClick={handleDailyCheckIn}
             disabled={Boolean(progression?.daily.checkInClaimed)}
           >
-            {progression?.daily.checkInClaimed ? 'Daily Check-in Claimed' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
+            {progression?.daily.checkInClaimed ? 'Claimed for this 12-hour window' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
           </button>
           <div className="daily-checkin-note">
             {progression?.daily.checkInClaimed ? 'Next daily check-in in ' : 'Daily reset in '}

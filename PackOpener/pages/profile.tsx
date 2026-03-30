@@ -14,6 +14,7 @@ import { getAchievements } from '../lib/achievements'
 
 type SetMeta = { id: string; name: string }
 type ShowcaseCardEntry = ShowcasePull & { count: number; latestPulledAt: number }
+type ProfileMobileTab = 'overview' | 'collection' | 'achievements'
 type ExchangeConfirmState =
   | { mode: 'single'; card: ShowcaseCardEntry; reward: number }
   | { mode: 'bulk'; copies: number; reward: number }
@@ -28,11 +29,29 @@ export default function ProfilePage() {
   const [confirmExchange, setConfirmExchange] = useState<ExchangeConfirmState>(null)
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
   const [setTotals, setSetTotals] = useState<Record<string, number>>({})
+  const [isMobileProfile, setIsMobileProfile] = useState(false)
+  const [mobileTab, setMobileTab] = useState<ProfileMobileTab>('overview')
+  const [expandedSetIds, setExpandedSetIds] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     setPulls(sortByRarityDesc(getShowcasePulls()))
     setProgression(loadProgressionState())
     setSessionStats(loadSessionStats())
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(max-width: 640px)')
+    const update = () => setIsMobileProfile(mediaQuery.matches)
+    update()
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', update)
+      return () => mediaQuery.removeEventListener('change', update)
+    }
+
+    mediaQuery.addListener(update)
+    return () => mediaQuery.removeListener(update)
   }, [])
 
   function formatCoins(value: number): string {
@@ -250,6 +269,20 @@ export default function ProfilePage() {
     return { duplicateCopies, duplicateReward }
   }, [groupedBySet])
 
+  const quickJumpSets = useMemo(() => groupedBySet.slice(0, 10), [groupedBySet])
+
+  useEffect(() => {
+    if (!isMobileProfile) return
+    setExpandedSetIds((prev) => {
+      const next: Record<string, boolean> = {}
+      for (const group of groupedBySet) {
+        // Keep prior toggle state if present; default to collapsed for cleaner mobile browsing.
+        next[group.setId] = prev[group.setId] ?? false
+      }
+      return next
+    })
+  }, [groupedBySet, isMobileProfile])
+
   function handleExchangeAllDuplicates() {
     if (!progression) return
     if (duplicateSummary.duplicateCopies <= 0) {
@@ -319,131 +352,221 @@ export default function ProfilePage() {
     setConfirmExchange(null)
   }
 
+  function toggleSetExpanded(setId: string) {
+    setExpandedSetIds((prev) => ({ ...prev, [setId]: !prev[setId] }))
+  }
+
+  function jumpToSet(setId: string) {
+    if (typeof window === 'undefined') return
+    setMobileTab('collection')
+    setExpandedSetIds((prev) => ({ ...prev, [setId]: true }))
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(`profile-set-${setId}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    })
+  }
+
+  const showOverviewSection = !isMobileProfile || mobileTab === 'overview'
+  const showCollectionSection = !isMobileProfile || mobileTab === 'collection'
+  const showAchievementsSection = !isMobileProfile || mobileTab === 'achievements'
+
   return (
     <Layout title="Rip Realm | Profile" description="Rip Realm profile — view your showcase pulls by set, ordered by rarity.">
       <section className="profile-wrap">
         <h1 className="profile-title">Profile</h1>
         <p className="profile-subtitle">Showcase includes only pulls above Double Rare, grouped by set and ordered by rarity.</p>
 
-        <section className="trainer-card">
-          <div className="trainer-card-head">
-            <span className="trainer-title">{trainerTitle}</span>
-            <strong>Trainer Profile</strong>
-          </div>
-          <div className="trainer-stats-grid">
-            <div className="trainer-stat"><span>Lifetime Packs</span><strong>{formatCoins(progression?.stats.lifetimePacksOpened || 0)}</strong></div>
-            <div className="trainer-stat"><span>Good Pulls</span><strong>{formatCoins(progression?.stats.lifetimeGoodPulls || 0)}</strong></div>
-            <div className="trainer-stat"><span>Elite Pulls</span><strong>{formatCoins(progression?.stats.lifetimeElitePulls || 0)}</strong></div>
-            <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} claims</strong></div>
-            <div className="trainer-stat"><span>Session Packs</span><strong>{formatCoins(sessionStats?.packsOpened || 0)}</strong></div>
-            <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatCoins(sessionStats?.netCoins || 0)}</strong></div>
-          </div>
-        </section>
-
-        <section className="completion-panel">
-          <div className="panel-head">
-            <h2>Set Completion</h2>
-            <span>Top sets by ownership</span>
-          </div>
-          <div className="completion-grid">
-            {setCompletion.length === 0 ? (
-              <div className="empty-state">Open packs to start set completion tracking.</div>
-            ) : (
-              setCompletion.map((item) => (
-                <article key={item.setId} className="completion-card">
-                  <div className="completion-ring" style={{ ['--completion' as any]: `${Math.round(item.ratio * 100)}%` }}>
-                    <span>{Math.round(item.ratio * 100)}%</span>
-                  </div>
-                  <div className="completion-copy">
-                    <strong>{item.setName}</strong>
-                    <span>{formatCoins(item.owned)} / {formatCoins(item.total || 0)} cards</span>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="achievement-panel">
-          <div className="panel-head">
-            <h2>Achievement Wall</h2>
-            <span>{achievements.filter((item) => item.unlocked).length}/{achievements.length} unlocked</span>
-          </div>
-          <div className="achievement-grid">
-            {achievements.map((achievement) => (
-              <article key={achievement.id} className={`achievement-item ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}>
-                <strong>{achievement.label}</strong>
-                <p>{achievement.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <div className="profile-economy-row">
-          <div className="profile-economy-card">
-            <span>Currency</span>
-            <strong>{formatCoins(progression?.currency || 0)} coins</strong>
-          </div>
-          <div className="profile-economy-card">
-            <span>Exchange Rule</span>
-            <strong>Trade showcase cards for coins</strong>
-          </div>
-        </div>
-        <div className="profile-action-row">
+        <div className="profile-mobile-tabs" role="tablist" aria-label="Profile sections">
           <button
             type="button"
-            className="showcase-exchange-btn bulk-exchange-btn"
-            onClick={handleExchangeAllDuplicates}
-            disabled={duplicateSummary.duplicateCopies <= 0}
+            role="tab"
+            aria-selected={mobileTab === 'overview'}
+            className={`profile-mobile-tab ${mobileTab === 'overview' ? 'is-active' : ''}`}
+            onClick={() => setMobileTab('overview')}
           >
-            Exchange All Duplicates (+{formatCoins(duplicateSummary.duplicateReward)})
+            Overview
           </button>
-          <span className="profile-action-meta">Duplicate copies: {duplicateSummary.duplicateCopies}</span>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === 'collection'}
+            className={`profile-mobile-tab ${mobileTab === 'collection' ? 'is-active' : ''}`}
+            onClick={() => setMobileTab('collection')}
+          >
+            Collection
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mobileTab === 'achievements'}
+            className={`profile-mobile-tab ${mobileTab === 'achievements' ? 'is-active' : ''}`}
+            onClick={() => setMobileTab('achievements')}
+          >
+            Achievements
+          </button>
         </div>
-        {exchangeMessage ? <div className="profile-exchange-note">{exchangeMessage}</div> : null}
 
-        {groupedBySet.length === 0 ? (
-          <div className="empty-state">No showcase pulls yet. Open packs to start building your collection.</div>
-        ) : (
-          <div className="set-groups">
-            {groupedBySet.map((group) => (
-              <section key={group.setId} className="set-card">
-                <div className="set-card-head">
-                  <h2>{group.setName}</h2>
-                  <span>{group.cards.length} pulls</span>
-                </div>
-                <div className="showcase-grid">
-                  {group.cards.map((card, index) => (
-                    <article key={`${card.id}-${card.latestPulledAt}-${index}`} className="showcase-item showcase-item-button" onClick={() => setFocusCard(card)}>
-                      <div className="showcase-image-wrap">
-                        {card.image ? <img src={card.image} alt={card.name} className="showcase-image" /> : <div className="showcase-no-image">No Image</div>}
+        {showOverviewSection && (
+          <>
+            <section className="trainer-card">
+              <div className="trainer-card-head">
+                <span className="trainer-title">{trainerTitle}</span>
+                <strong>Trainer Profile</strong>
+              </div>
+              <div className="trainer-stats-grid">
+                <div className="trainer-stat"><span>Lifetime Packs</span><strong>{formatCoins(progression?.stats.lifetimePacksOpened || 0)}</strong></div>
+                <div className="trainer-stat"><span>Good Pulls</span><strong>{formatCoins(progression?.stats.lifetimeGoodPulls || 0)}</strong></div>
+                <div className="trainer-stat"><span>Elite Pulls</span><strong>{formatCoins(progression?.stats.lifetimeElitePulls || 0)}</strong></div>
+                <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} claims</strong></div>
+                <div className="trainer-stat"><span>Session Packs</span><strong>{formatCoins(sessionStats?.packsOpened || 0)}</strong></div>
+                <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatCoins(sessionStats?.netCoins || 0)}</strong></div>
+              </div>
+            </section>
+
+            <section className="completion-panel">
+              <div className="panel-head">
+                <h2>Set Completion</h2>
+                <span>Top sets by ownership</span>
+              </div>
+              <div className="completion-grid">
+                {setCompletion.length === 0 ? (
+                  <div className="empty-state">Open packs to start set completion tracking.</div>
+                ) : (
+                  setCompletion.map((item) => (
+                    <article key={item.setId} className="completion-card">
+                      <div className="completion-ring" style={{ ['--completion' as any]: `${Math.round(item.ratio * 100)}%` }}>
+                        <span>{Math.round(item.ratio * 100)}%</span>
                       </div>
-                      <div className="showcase-content">
-                        <div className="showcase-name">{card.name}</div>
-                        <div className="showcase-meta">
-                          {card.rarity}
-                          {card.special ? ` • ${card.special}` : ''}
-                        </div>
-                      </div>
-                      <div className="showcase-actions">
-                        {card.count > 1 ? <div className="showcase-count">x{card.count}</div> : null}
-                        <button
-                          type="button"
-                          className="showcase-exchange-btn"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleExchangeCard(card)
-                          }}
-                        >
-                          Exchange +{getCardExchangeValue(card.rarity, card.special)}
-                        </button>
+                      <div className="completion-copy">
+                        <strong>{item.setName}</strong>
+                        <span>{formatCoins(item.owned)} / {formatCoins(item.total || 0)} cards</span>
                       </div>
                     </article>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <div className="profile-economy-row">
+              <div className="profile-economy-card">
+                <span>Currency</span>
+                <strong>{formatCoins(progression?.currency || 0)} coins</strong>
+              </div>
+              <div className="profile-economy-card">
+                <span>Exchange Rule</span>
+                <strong>Trade showcase cards for coins</strong>
+              </div>
+            </div>
+          </>
+        )}
+
+        {showAchievementsSection && (
+          <section className="achievement-panel">
+            <div className="panel-head">
+              <h2>Achievement Wall</h2>
+              <span>{achievements.filter((item) => item.unlocked).length}/{achievements.length} unlocked</span>
+            </div>
+            <div className="achievement-grid">
+              {achievements.map((achievement) => (
+                <article key={achievement.id} className={`achievement-item ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}>
+                  <strong>{achievement.label}</strong>
+                  <p>{achievement.description}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {showCollectionSection && (
+          <>
+            {isMobileProfile && quickJumpSets.length > 1 && (
+              <div className="profile-set-jump-row" aria-label="Quick jump sets">
+                {quickJumpSets.map((group) => (
+                  <button
+                    key={`jump-${group.setId}`}
+                    type="button"
+                    className={`profile-set-jump-chip ${expandedSetIds[group.setId] ? 'is-active' : ''}`}
+                    onClick={() => jumpToSet(group.setId)}
+                  >
+                    {group.setName}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="profile-action-row">
+              <button
+                type="button"
+                className="showcase-exchange-btn bulk-exchange-btn"
+                onClick={handleExchangeAllDuplicates}
+                disabled={duplicateSummary.duplicateCopies <= 0}
+              >
+                Exchange All Duplicates (+{formatCoins(duplicateSummary.duplicateReward)})
+              </button>
+              <span className="profile-action-meta">Duplicate copies: {duplicateSummary.duplicateCopies}</span>
+            </div>
+            {exchangeMessage ? <div className="profile-exchange-note">{exchangeMessage}</div> : null}
+
+            {groupedBySet.length === 0 ? (
+              <div className="empty-state">No showcase pulls yet. Open packs to start building your collection.</div>
+            ) : (
+              <div className="set-groups">
+                {groupedBySet.map((group) => (
+                  <section key={group.setId} className="set-card" id={`profile-set-${group.setId}`}>
+                    <div className="set-card-head">
+                      <h2>{group.setName}</h2>
+                      <div className="set-card-head-actions">
+                        <span>{group.cards.length} pulls</span>
+                        {isMobileProfile && (
+                          <button
+                            type="button"
+                            className="set-card-collapse-btn"
+                            onClick={() => toggleSetExpanded(group.setId)}
+                            aria-expanded={Boolean(expandedSetIds[group.setId])}
+                          >
+                            {expandedSetIds[group.setId] ? 'Hide' : 'Show'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {(!isMobileProfile || expandedSetIds[group.setId]) && (
+                      <div className="showcase-grid">
+                        {group.cards.map((card, index) => (
+                          <article key={`${card.id}-${card.latestPulledAt}-${index}`} className="showcase-item showcase-item-button" onClick={() => setFocusCard(card)}>
+                            <div className="showcase-image-wrap">
+                              {card.image ? <img src={card.image} alt={card.name} className="showcase-image" /> : <div className="showcase-no-image">No Image</div>}
+                            </div>
+                            <div className="showcase-content">
+                              <div className="showcase-name">{card.name}</div>
+                              <div className="showcase-meta">
+                                {card.rarity}
+                                {card.special ? ` • ${card.special}` : ''}
+                              </div>
+                            </div>
+                            <div className="showcase-actions">
+                              {card.count > 1 ? <div className="showcase-count">x{card.count}</div> : null}
+                              <button
+                                type="button"
+                                className="showcase-exchange-btn"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  handleExchangeCard(card)
+                                }}
+                              >
+                                Exchange +{getCardExchangeValue(card.rarity, card.special)}
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
 
