@@ -4,6 +4,7 @@ import {
   DAILY_CHECKIN_REWARD,
   claimDailyCheckIn,
   getMissionStatuses,
+  getMsUntilNextDailyReset,
   loadProgressionState,
   saveProgressionState,
   type ProgressionState,
@@ -14,12 +15,28 @@ function formatCoins(value: number): string {
   return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(value)))
 }
 
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 export default function MissionsPage() {
   const [progression, setProgression] = useState<ProgressionState | null>(null)
   const [checkInMessage, setCheckInMessage] = useState('')
+  const [msUntilReset, setMsUntilReset] = useState(() => getMsUntilNextDailyReset())
 
   useEffect(() => {
     setProgression(loadProgressionState())
+  }, [])
+
+  useEffect(() => {
+    const tick = () => setMsUntilReset(getMsUntilNextDailyReset())
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
   }, [])
 
   const missionStatuses = useMemo(() => {
@@ -71,6 +88,10 @@ export default function MissionsPage() {
           >
             {progression?.daily.checkInClaimed ? 'Daily Check-in Claimed' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
           </button>
+          <div className="daily-checkin-note">
+            {progression?.daily.checkInClaimed ? 'Next daily check-in in ' : 'Daily reset in '}
+            <strong>{formatCountdown(msUntilReset)}</strong>
+          </div>
           {checkInMessage ? <div className="daily-checkin-note">{checkInMessage}</div> : null}
         </div>
 

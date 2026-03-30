@@ -685,8 +685,11 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .selected-pack-sleeve-inline{width:82px;height:104px}
   .selected-pack-stat-grid{grid-template-columns:1fr}
   .selected-pack-stat-grid .pack-stat{min-height:auto}
-  .selected-pack-card-side .selected-pack-system{display:none}
-  .selected-pack-card-side .selected-pack-stat-grid{display:none}
+  .selected-pack-card-side .selected-pack-system{display:block}
+  .selected-pack-card-side .selected-pack-stat-grid{display:grid}
+  .selected-pack-card-side .selected-pack-stat-grid .pack-stat{padding:8px 9px}
+  .selected-pack-card-side .selected-pack-stat-grid .pack-stat span{font-size:.7rem}
+  .selected-pack-card-side .selected-pack-stat-grid .pack-stat strong{font-size:.74rem;line-height:1.2}
   .selected-pack-card-side .selected-pack-art-inline{min-width:92px;width:92px;min-height:102px}
   .selected-pack-card-side .selected-pack-sleeve-inline{width:82px;height:104px}
   .landing-title{margin:8px 0 4px;font-size:1.18rem}

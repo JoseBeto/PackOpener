@@ -13,6 +13,11 @@ export function getPackOpenCost(packType: PackType): number {
   return packType === 'premium' ? PREMIUM_PACK_OPEN_COST : STANDARD_PACK_OPEN_COST
 }
 
+export function getMsUntilNextDailyReset(now = new Date()): number {
+  const nextUtcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
+  return Math.max(0, nextUtcMidnight - now.getTime())
+}
+
 export type MissionKind = 'daily' | 'weekly'
 
 export type MissionDefinition = {

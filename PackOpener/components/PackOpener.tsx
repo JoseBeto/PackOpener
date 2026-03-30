@@ -178,6 +178,7 @@ export default function RipRealmApp() {
   const [summaryNetCount, setSummaryNetCount] = useState(0)
   const [achievementToasts, setAchievementToasts] = useState<AchievementToast[]>([])
   const summaryRef = useRef<HTMLDivElement | null>(null)
+  const sleeveSectionRef = useRef<HTMLElement | null>(null)
   const suppressClickRef = useRef(false)
   const sleeveGestureConsumedRef = useRef(false)
   const ripStartRef = useRef<{ x: number; y: number; nx: number; ny: number } | null>(null)
@@ -455,6 +456,16 @@ export default function RipRealmApp() {
     summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     sfxRef.current.summary()
   }, [view])
+
+  useEffect(() => {
+    if (view !== 'sleeve') return
+    if (typeof window === 'undefined') return
+
+    window.requestAnimationFrame(() => {
+      const mobile = window.matchMedia('(max-width: 640px)').matches
+      sleeveSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: mobile ? 'start' : 'center' })
+    })
+  }, [view, currentPack.length])
 
   useEffect(() => {
     if (view !== 'summary' || !lastPackEconomy) {
@@ -1189,7 +1200,7 @@ export default function RipRealmApp() {
       )}
 
       {view === 'sleeve' && currentPack.length > 0 && (
-        <section className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''} ${isSleeveRipping ? 'sleeve-is-ripping' : ''}`}>
+        <section ref={sleeveSectionRef} className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''} ${isSleeveRipping ? 'sleeve-is-ripping' : ''}`}>
           <div className="stage-spotlight stage-spotlight-center" />
           <div className="stage-particles" aria-hidden="true">
             <span />
