@@ -221,6 +221,7 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 .pack-type-toggle.is-premium .pack-type-indicator{transform:translateX(100%)}
 .pack-type-stack{display:flex;flex-direction:column;gap:10px;width:100%}
 .pack-type-side-panel{width:100%}
+.pack-details-toggle{display:none;width:100%;padding:8px 10px;border-radius:10px;border:1px solid rgba(140,220,255,0.34);background:linear-gradient(135deg, rgba(34,211,238,0.14), rgba(139,92,246,0.12));color:#def8ff;font-size:.76rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
 .pack-type-btn{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;padding:7px 8px;border-radius:8px;border:none;background:transparent;color:#b9e4ff;cursor:pointer;transition:color .16s ease, transform .16s ease;text-align:center;min-height:52px}
 .pack-type-btn strong{font-size:.82rem;letter-spacing:.02em}
 .pack-type-btn span{font-size:.69rem;color:#95d5f2;font-weight:800;letter-spacing:.03em}
@@ -450,7 +451,6 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 .pack-econ-total.is-negative{border-color:rgba(239,83,80,.55);background:rgba(239,83,80,.14);color:#ffd4d1}
 .pack-econ-balance{width:100%;text-align:center;font-size:.8rem;color:#c7f5ff;font-weight:760}
 .summary-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
-.summary-action-note{font-size:.82rem;color:#bafee3;text-align:center;line-height:1.4;border:1px solid rgba(120,246,212,0.4);background:rgba(90,230,180,0.1);border-radius:10px;padding:8px 10px;max-width:760px;width:100%}
 .achievement-toast-stack{position:fixed;right:14px;bottom:14px;z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
 .achievement-toast{pointer-events:auto;border:1px solid rgba(120,246,212,0.55);background:linear-gradient(145deg, rgba(11,30,43,0.96), rgba(8,20,38,0.96));border-radius:12px;padding:10px 12px;box-shadow:0 16px 26px rgba(0,0,0,0.34), 0 0 0 1px rgba(120,246,212,0.16) inset}
 .achievement-toast-tag{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#a7ffe0}
@@ -638,10 +638,6 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 }
 
 @media(max-width:640px){
-  .session-hud{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:8px 10px}
-  .session-hud-chip{padding:7px 8px}
-  .session-hud-chip span{font-size:.6rem}
-  .session-hud-chip strong{font-size:.8rem}
   .site-header{padding:calc(10px + var(--safe-top)) 12px 10px;min-height:58px;gap:8px}
   .header-quick-coins{padding:6px 8px}
   .header-quick-coins span{font-size:.6rem}
@@ -663,13 +659,30 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .pack-opener-wrap{gap:10px}
   .flow-shell{padding:12px 10px;border-radius:14px}
   .landing-shell{gap:10px}
-  .landing-card-focus{padding:12px}
+  .landing-card-focus{padding:12px;display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:calc(100dvh - 148px);align-items:stretch}
+  .landing-copy{display:none}
+  .control-row{gap:8px;align-content:start}
+  .field-label{padding:10px;gap:6px}
+  .field-label-packtype{padding-top:8px}
+  .set-browser-shell{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;min-height:0;height:100%}
+  .set-tile-focus-section{display:flex;flex-direction:column;min-height:0}
+  .set-tile-head{margin-bottom:6px}
+  .set-tile-head span{display:none}
+  .set-tile-grid{flex:1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
+  .set-browser-actions{display:flex;gap:6px}
+  .set-browser-actions .set-browser-open-btn{min-height:34px;font-size:.74rem;padding:6px 8px}
+  .set-browser-actions .set-browser-open-btn:nth-child(2){display:none}
+  .pack-details-toggle{display:block}
+  .pack-type-side-panel{display:none}
+  .pack-type-side-panel.is-open{display:block}
   .selected-pack-card-inline{padding:12px;gap:10px}
   .selected-pack-inline-main{gap:10px;align-items:flex-start}
   .selected-pack-art-inline{min-width:92px;width:92px;min-height:102px}
   .selected-pack-sleeve-inline{width:82px;height:104px}
   .selected-pack-stat-grid{grid-template-columns:1fr}
   .selected-pack-stat-grid .pack-stat{min-height:auto}
+  .selected-pack-card-side .selected-pack-system{display:none}
+  .selected-pack-card-side .selected-pack-stat-grid{display:none}
   .selected-pack-card-side .selected-pack-art-inline{min-width:92px;width:92px;min-height:102px}
   .selected-pack-card-side .selected-pack-sleeve-inline{width:82px;height:104px}
   .landing-title{margin:8px 0 4px;font-size:1.18rem}
@@ -701,8 +714,10 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .flow-header{align-items:flex-start;flex-direction:column}
   .flow-actions{width:100%;justify-content:center}
   .set-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:220px}
-  .set-tile-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:360px}
+  .set-tile-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:none}
   .set-carousel-track{grid-auto-columns:minmax(130px, 130px)}
+  .status-panel{display:none}
+  .economy-panel{display:none}
   .set-browser-modal-overlay{align-items:flex-end;padding:0}
   .set-browser-modal-shell{width:100%;height:min(92dvh,92vh);border-radius:18px 18px 0 0;border-left:none;border-right:none;border-bottom:none;padding:12px 10px calc(14px + var(--safe-bottom))}
   .set-browser-modal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -722,7 +737,6 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 }
 
 @media(max-width:480px){
-  .session-hud{grid-template-columns:1fr 1fr}
   .site-main{padding:8px}
   .hero,.profile-wrap{padding:10px 10px;border-radius:14px}
   .app-home .riprealm-page{min-height:calc(100dvh - 70px)}
@@ -731,7 +745,8 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   .achievement-grid{grid-template-columns:1fr}
   .card-shell{max-width:none}
   .set-card-grid{grid-template-columns:1fr}
-  .set-tile-grid{grid-template-columns:1fr;max-height:340px}
+  .landing-card-focus{min-height:calc(100dvh - 140px)}
+  .set-tile-grid{grid-template-columns:1fr;max-height:none}
   .set-carousel-track{grid-auto-columns:minmax(120px, 120px)}
   .set-browser-modal-grid{grid-template-columns:1fr}
   .card-name{font-size:0.86rem}

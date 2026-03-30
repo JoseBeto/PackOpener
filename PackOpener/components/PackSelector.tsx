@@ -56,6 +56,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
   const [isSetBrowserOpen, setIsSetBrowserOpen] = useState(false)
   const [browserTab, setBrowserTab] = useState<BrowserTab>('newest')
   const [eraFilter, setEraFilter] = useState<EraKey>('all')
+  const [isMobilePackDetailsOpen, setIsMobilePackDetailsOpen] = useState(false)
 
   const familySets = sets.filter((set) => (setFamily === 'pocket' ? getSetFamily(set.id) === 'pocket' : getSetFamily(set.id) === 'mainline'))
   const filteredSets = familySets.filter((set) => {
@@ -318,7 +319,7 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
           )}
         </label>
 
-        <label className="field-label">
+        <label className="field-label field-label-packtype">
           <span className="field-title">Pack Type</span>
           <div className="pack-type-stack">
             <div className={`pack-type-toggle ${packType === 'premium' ? 'is-premium' : 'is-standard'}`} role="tablist" aria-label="Pack type">
@@ -344,7 +345,19 @@ export default function PackSelector({ setId, onSetIdChange, packType, onPackTyp
                 <span>{PREMIUM_PACK_OPEN_COST} coins</span>
               </button>
             </div>
-            {packTypePanel ? <div className="pack-type-side-panel">{packTypePanel}</div> : null}
+            {packTypePanel ? (
+              <>
+                <button
+                  type="button"
+                  className="pack-details-toggle"
+                  aria-expanded={isMobilePackDetailsOpen}
+                  onClick={() => setIsMobilePackDetailsOpen((prev) => !prev)}
+                >
+                  {isMobilePackDetailsOpen ? 'Hide Pack Details' : 'Show Pack Details'}
+                </button>
+                <div className={`pack-type-side-panel ${isMobilePackDetailsOpen ? 'is-open' : ''}`}>{packTypePanel}</div>
+              </>
+            ) : null}
           </div>
         </label>
       </div>

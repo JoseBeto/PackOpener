@@ -3,11 +3,10 @@ import { AnimatePresence, animate, motion, useMotionValue, useSpring, useTransfo
 import PackSelector from './PackSelector'
 import packs from '../data/packs.json'
 import { simulatePack, type Card } from '../lib/simulator'
-import { addShowcasePulls, removeOneShowcasePull } from '../lib/showcase'
+import { addShowcasePulls } from '../lib/showcase'
 import {
   applyPackProgression,
   createDefaultProgressionState,
-  exchangeCardForCurrency,
   getPackOpenCost,
   getCardPullReward,
   loadProgressionState,
@@ -177,7 +176,6 @@ export default function RipRealmApp() {
   const [hintActivityTick, setHintActivityTick] = useState(0)
   const [summaryRewardCount, setSummaryRewardCount] = useState(0)
   const [summaryNetCount, setSummaryNetCount] = useState(0)
-  const [summaryActionMessage, setSummaryActionMessage] = useState('')
   const [achievementToasts, setAchievementToasts] = useState<AchievementToast[]>([])
   const summaryRef = useRef<HTMLDivElement | null>(null)
   const suppressClickRef = useRef(false)
@@ -203,6 +201,7 @@ export default function RipRealmApp() {
   const poolAbortRef = useRef<AbortController | null>(null)
   const sfxRef = useRef(getSfxEngine())
   const unlockedAchievementIdsRef = useRef<Set<string>>(new Set())
+  const pendingAchievementToastsRef = useRef<AchievementToast[]>([])
   const dragX = useMotionValue(0)
   const dragRotate = useTransform(dragX, [-180, 0, 180], [-10, 0, 10])
   const dragGlow = useTransform(dragX, [-180, 0, 180], [0.35, 1, 0.35])
@@ -271,10 +270,6 @@ export default function RipRealmApp() {
   const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
 
-  function getCollectionKey(localSetId: string, cardId: string): string {
-    return `${localSetId}:${cardId}`
-  }
-
   function getPackOpeningTone(pack: Card[]): HighlightTone {
     let bestTone: HighlightTone = 'base'
     for (const card of pack) {
@@ -342,21 +337,43 @@ export default function RipRealmApp() {
     }
   }, [achievementToasts])
 
+  useEffect(() => {
+    if (view !== 'summary') return
+    if (!pendingAchievementToastsRef.current.length) return
+
+    setAchievementToasts((prev) => {
+      const existing = new Set(prev.map((item) => item.id))
+      const additions = pendingAchievementToastsRef.current.filter((item) => !existing.has(item.id))
+      return additions.length > 0 ? [...prev, ...additions] : prev
+    })
+    pendingAchievementToastsRef.current = []
+    sfxRef.current.rarity('holo')
+  }, [view])
+
   function applyProgressionUpdate(nextState: ProgressionState, options?: { suppressToasts?: boolean }) {
     const unlockedNow = getAchievements(nextState).filter((item) => item.unlocked)
     const unlockedSet = new Set(unlockedNow.map((item) => item.id))
 
     if (!options?.suppressToasts) {
-      const newlyUnlocked = unlockedNow.filter((item) => !unlockedAchievementIdsRef.current.has(item.id))
+      const newlyUnlocked = unlockedNow
+        .filter((item) => !unlockedAchievementIdsRef.current.has(item.id))
+        .map((item) => ({ id: item.id, label: item.label, description: item.description }))
+
       if (newlyUnlocked.length > 0) {
-        setAchievementToasts((prev) => {
-          const existing = new Set(prev.map((item) => item.id))
-          const additions = newlyUnlocked
-            .filter((item) => !existing.has(item.id))
-            .map((item) => ({ id: item.id, label: item.label, description: item.description }))
-          return [...prev, ...additions]
-        })
-        sfxRef.current.rarity('holo')
+        if (view === 'summary') {
+          setAchievementToasts((prev) => {
+            const existing = new Set(prev.map((item) => item.id))
+            const additions = newlyUnlocked.filter((item) => !existing.has(item.id))
+            return [...prev, ...additions]
+          })
+          sfxRef.current.rarity('holo')
+        } else {
+          const existingPending = new Set(pendingAchievementToastsRef.current.map((item) => item.id))
+          const additions = newlyUnlocked.filter((item) => !existingPending.has(item.id))
+          if (additions.length > 0) {
+            pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
+          }
+        }
       }
     }
 
@@ -756,6 +773,9 @@ export default function RipRealmApp() {
     setShowRevealHint(false)
     setIsTransitioning(false)
     setSwipeDirection(1)
+    if (nextView === 'select') {
+      pendingAchievementToastsRef.current = []
+    }
   }
 
   function markRevealInteraction() {
@@ -1076,82 +1096,6 @@ export default function RipRealmApp() {
     if (view !== 'select') {
       resetFlow('select')
     }
-  }
-
-  async function handleShareSummary() {
-    if (!currentPack.length) return
-    const bestName = bestPull?.name || 'Unknown card'
-    const net = lastPackEconomy?.currencyDelta ?? 0
-    const text = `I opened a ${packTypeLabel} in ${setDisplayName} and hit ${bestName}. Pack net: ${net >= 0 ? '+' : ''}${net} coins.`
-
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text)
-        setSummaryActionMessage('Pull summary copied to clipboard.')
-      } else {
-        setSummaryActionMessage('Clipboard not available in this browser.')
-      }
-    } catch {
-      setSummaryActionMessage('Could not copy summary. Try again.')
-    }
-  }
-
-  function handleAddBestToShowcase() {
-    if (!bestPull) return
-    addShowcasePulls(setId, [bestPull])
-    setSummaryActionMessage(`${bestPull.name} added to showcase.`)
-  }
-
-  function handleExchangePackDuplicates() {
-    if (!currentPack.length) return
-
-    const packCounts: Record<string, { card: Card; count: number }> = {}
-    for (const card of currentPack) {
-      const key = getCollectionKey(setId, card.id)
-      if (!packCounts[key]) {
-        packCounts[key] = { card, count: 1 }
-      } else {
-        packCounts[key].count += 1
-      }
-    }
-
-    let nextProgression = progression
-    let exchangedCopies = 0
-    let rewardTotal = 0
-
-    for (const [key, entry] of Object.entries(packCounts)) {
-      const totalOwnedAfterPack = nextProgression.collection[key] || 0
-      const beforeOwned = Math.max(0, totalOwnedAfterPack - entry.count)
-      const duplicatesBefore = Math.max(0, beforeOwned - 1)
-      const duplicatesAfter = Math.max(0, beforeOwned + entry.count - 1)
-      const duplicatesFromPack = Math.max(0, duplicatesAfter - duplicatesBefore)
-
-      for (let i = 0; i < duplicatesFromPack; i += 1) {
-        const outcome = exchangeCardForCurrency(nextProgression, setId, entry.card.id, entry.card.rarity, entry.card.special, { allowMissingCollection: true })
-        if (!outcome.success) break
-        nextProgression = outcome.nextState
-        rewardTotal += outcome.reward
-        exchangedCopies += 1
-        removeOneShowcasePull(setId, entry.card.id)
-      }
-    }
-
-    if (exchangedCopies <= 0) {
-      setSummaryActionMessage('No duplicates from this pack to exchange.')
-      return
-    }
-
-    applyProgressionUpdate(nextProgression)
-    setSummaryActionMessage(`Exchanged ${exchangedCopies} duplicate card${exchangedCopies === 1 ? '' : 's'} for +${formatCoins(rewardTotal)} coins.`)
-    setLastPackEconomy((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        totalReward: prev.totalReward + rewardTotal,
-        currencyDelta: prev.currencyDelta + rewardTotal,
-        currencyAfter: prev.currencyAfter + rewardTotal,
-      }
-    })
   }
 
   return (
@@ -1719,12 +1663,8 @@ export default function RipRealmApp() {
 
             <div className="summary-actions">
               <button className="button" onClick={preparePack} disabled={!canAffordPack}>Open Another Pack</button>
-              <button className="ghost-button" onClick={handleExchangePackDuplicates}>Exchange Duplicates</button>
-              <button className="ghost-button" onClick={handleAddBestToShowcase} disabled={!bestPull}>Add Best to Showcase</button>
-              <button className="ghost-button" onClick={handleShareSummary}>Share Pull</button>
               <button className="ghost-button" onClick={() => resetFlow('select')}>Select New Set</button>
             </div>
-            {summaryActionMessage ? <div className="summary-action-note">{summaryActionMessage}</div> : null}
 
             <div className="opened-grid summary-grid">
               {currentPack.map((c, i) => {
