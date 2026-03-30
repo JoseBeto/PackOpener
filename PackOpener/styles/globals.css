@@ -490,7 +490,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .pack-econ-total.is-negative{border-color:rgba(239,83,80,.55);background:rgba(239,83,80,.14);color:#ffd4d1}
 .pack-econ-balance{width:100%;text-align:center;font-size:.8rem;color:#c7f5ff;font-weight:760}
 .summary-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
-.achievement-toast-stack{position:fixed;right:14px;top:calc(14px + var(--safe-top));z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
+.achievement-toast-stack{position:fixed;right:14px;top:calc(84px + var(--safe-top));z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
 .achievement-toast{pointer-events:auto;border:1px solid rgba(120,246,212,0.55);background:linear-gradient(145deg, rgba(11,30,43,0.96), rgba(8,20,38,0.96));border-radius:12px;padding:10px 12px;box-shadow:0 16px 26px rgba(0,0,0,0.34), 0 0 0 1px rgba(120,246,212,0.16) inset}
 .achievement-toast-tag{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#a7ffe0}
 .achievement-toast strong{display:block;margin-top:4px;font-size:.88rem;color:#e8fff7}
