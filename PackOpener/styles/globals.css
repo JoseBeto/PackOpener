@@ -716,7 +716,7 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .app-nav-dock{bottom:8px;width:calc(100vw - 14px);grid-template-columns:1fr 1.18fr 1fr;padding:7px}
   .app-nav-item{font-size:.8rem;padding:9px 6px}
   .app-nav-center{font-size:.86rem}
-  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow:visible;overscroll-behavior:none}
+  .app-home .site-main{padding:8px 8px calc(122px + var(--safe-bottom));min-height:0;overflow-y:visible;overflow-x:hidden;overscroll-behavior:none}
   .hero{text-align:center;padding:10px 10px 12px;border-radius:14px}
   .app-home .riprealm-page{display:flex;flex-direction:column;min-height:0}
   .hero h1{font-size:1.15rem;margin:0 0 4px}
@@ -735,10 +735,10 @@ body.lock-select-scroll #__next{height:100%;overflow:hidden}
   .landing-shell{gap:10px;min-height:0}
   .app-home .pack-opener-wrap.is-select-view .landing-card-focus{padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;flex:1;overflow:hidden}
 
-  /* When mobile pack details are expanded, allow vertical scrolling so CTA stays reachable. */
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:auto;overflow:visible}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:auto;overflow:visible}
-  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:unset;overflow:visible}
+  /* Keep details-open scrolling tight: vertical only, no horizontal drift. */
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open{height:100%;overflow:hidden}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-shell{height:100%;overflow:hidden}
+  .app-home .pack-opener-wrap.is-select-view.is-pack-details-open .landing-card-focus{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 
   /* Summary must remain scrollable; only clip accidental horizontal drift. */
   .app-home .pack-opener-wrap.is-summary-view{height:auto;overflow-x:hidden;overflow-y:visible}

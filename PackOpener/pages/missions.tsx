@@ -120,16 +120,12 @@ export default function MissionsPage() {
           >
             {progression?.daily.checkInClaimed ? 'Claimed for this 12-hour window' : `Claim Daily Check-in +${DAILY_CHECKIN_REWARD}`}
           </button>
-          <div className="daily-checkin-note">
-            {progression?.daily.checkInClaimed ? 'Next daily check-in in ' : 'Daily reset in '}
-            <strong>{formatCountdown(msUntilDailyReset)}</strong>
-          </div>
-          <div className="daily-checkin-note">Weekly missions reset in <strong>{formatCountdown(msUntilWeeklyReset)}</strong></div>
           {checkInMessage ? <div className="daily-checkin-note">{checkInMessage}</div> : null}
         </div>
 
         <div className="missions-panel" style={{ marginTop: '10px' }}>
           <div className="missions-head">Daily Missions</div>
+          <div className="daily-checkin-note">Daily reset in <strong>{formatCountdown(msUntilDailyReset)}</strong></div>
           {missionStatuses.daily.map((mission) => {
             const ratio = Math.min(100, Math.round((mission.progress / mission.target) * 100))
             return (
