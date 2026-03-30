@@ -271,15 +271,15 @@ export default function PackSelector({
     const isCompactViewport = window.matchMedia('(max-width: 640px)').matches
     if (!isCompactViewport) return
     
-    // Find the active set tile button
-    const activeButton = setTileGridRef.current.querySelector(
-      `.set-tile-card.is-active`
-    ) as HTMLElement | null
-    
-    if (activeButton) {
-      // Scroll only vertically, avoid horizontal centering
-      activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
+    const tileGrid = setTileGridRef.current
+    if (!tileGrid) return
+
+    // Find the active set tile button and only move the tile row itself.
+    const activeButton = tileGrid.querySelector('.set-tile-card.is-active') as HTMLElement | null
+    if (!activeButton) return
+
+    const targetLeft = activeButton.offsetLeft - (tileGrid.clientWidth - activeButton.clientWidth) / 2
+    tileGrid.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
   }, [setId])
 
   useEffect(() => {
