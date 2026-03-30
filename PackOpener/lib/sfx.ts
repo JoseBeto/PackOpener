@@ -336,6 +336,14 @@ class PocketSfx {
     this.playTone({ frequency: 920, duration: 0.26, type: 'sine', volume: 0.024, delay: 0.22 })
   }
 
+  missionComplete() {
+    // Brisk upward triad to differentiate mission completion from achievement unlocks.
+    this.playTone({ frequency: 520, duration: 0.09, type: 'triangle', volume: 0.03 })
+    this.playTone({ frequency: 660, duration: 0.11, type: 'triangle', volume: 0.031, delay: 0.06 })
+    this.playTone({ frequency: 860, duration: 0.14, type: 'sine', volume: 0.028, delay: 0.13 })
+    this.playNoise({ duration: 0.08, volume: 0.008, highpass: 2800, delay: 0.08 })
+  }
+
   godPack() {
     // Triumphant rising 4-note fanfare
     this.playTone({ frequency: 440, duration: 0.14, type: 'triangle', volume: 0.04 })

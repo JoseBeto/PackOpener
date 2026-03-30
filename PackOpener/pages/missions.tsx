@@ -9,7 +9,6 @@ import {
   saveProgressionState,
   type ProgressionState,
 } from '../lib/progression'
-import { getAchievements } from '../lib/achievements'
 
 function formatCoins(value: number): string {
   return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(value)))
@@ -42,11 +41,6 @@ export default function MissionsPage() {
   const missionStatuses = useMemo(() => {
     if (!progression) return { daily: [], weekly: [] as ReturnType<typeof getMissionStatuses>['weekly'] }
     return getMissionStatuses(progression)
-  }, [progression])
-
-  const achievements = useMemo(() => {
-    if (!progression) return []
-    return getAchievements(progression)
   }, [progression])
 
   function handleDailyCheckIn() {
@@ -128,21 +122,6 @@ export default function MissionsPage() {
             )
           })}
         </div>
-
-        <section className="achievement-panel" style={{ marginTop: '12px' }}>
-          <div className="panel-head">
-            <h2>Achievement Progress</h2>
-            <span>{achievements.filter((item) => item.unlocked).length}/{achievements.length} unlocked</span>
-          </div>
-          <div className="achievement-grid">
-            {achievements.map((achievement) => (
-              <article key={achievement.id} className={`achievement-item ${achievement.unlocked ? 'is-unlocked' : 'is-locked'}`}>
-                <strong>{achievement.label}</strong>
-                <p>{achievement.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
       </section>
     </Layout>
   )

@@ -7,6 +7,7 @@ import { addShowcasePulls } from '../lib/showcase'
 import {
   applyPackProgression,
   createDefaultProgressionState,
+  getMissionStatuses,
   getPackOpenCost,
   getCardPullReward,
   loadProgressionState,
@@ -46,7 +47,13 @@ type PackEconomySummary = {
 }
 
 type RewardTone = 'low' | 'mid' | 'high'
-type AchievementToast = { id: string; label: string; description: string }
+type AchievementToast = {
+  id: string
+  label: string
+  description: string
+  tag?: string
+  tone?: 'achievement' | 'mission'
+}
 
 function formatCoins(value: number): string {
   return new Intl.NumberFormat('en-US').format(Math.round(value))
@@ -350,13 +357,19 @@ export default function RipRealmApp() {
     if (view !== 'summary') return
     if (!pendingAchievementToastsRef.current.length) return
 
+    const hasPendingMissionToast = pendingAchievementToastsRef.current.some((item) => item.tone === 'mission')
+
     setAchievementToasts((prev) => {
       const existing = new Set(prev.map((item) => item.id))
       const additions = pendingAchievementToastsRef.current.filter((item) => !existing.has(item.id))
       return additions.length > 0 ? [...prev, ...additions] : prev
     })
     pendingAchievementToastsRef.current = []
-    sfxRef.current.rarity('holo')
+    if (hasPendingMissionToast) {
+      sfxRef.current.missionComplete()
+    } else {
+      sfxRef.current.rarity('holo')
+    }
   }, [view])
 
   function applyProgressionUpdate(nextState: ProgressionState, options?: { suppressToasts?: boolean }) {
@@ -366,19 +379,52 @@ export default function RipRealmApp() {
     if (!options?.suppressToasts) {
       const newlyUnlocked = unlockedNow
         .filter((item) => !unlockedAchievementIdsRef.current.has(item.id))
-        .map((item) => ({ id: item.id, label: item.label, description: item.description }))
+        .map((item) => ({
+          id: item.id,
+          label: item.label,
+          description: item.description,
+          tag: 'Achievement Unlocked',
+          tone: 'achievement' as const,
+        }))
 
-      if (newlyUnlocked.length > 0) {
+      const newlyCompletedMissions: AchievementToast[] = progression
+        ? (() => {
+            const prev = getMissionStatuses(progression)
+            const next = getMissionStatuses(nextState)
+            const previousById = [...prev.daily, ...prev.weekly].reduce<Record<string, boolean>>((acc, mission) => {
+              acc[mission.id] = mission.claimed
+              return acc
+            }, {})
+
+            return [...next.daily, ...next.weekly]
+              .filter((mission) => mission.claimed && !previousById[mission.id])
+              .map((mission) => ({
+                id: `mission-${mission.id}-${nextState.daily.key}-${nextState.weekly.key}`,
+                label: `${mission.kind === 'weekly' ? 'Weekly' : 'Daily'} Mission Complete`,
+                description: `${mission.label} • +${formatCoins(mission.reward)} coins`,
+                tag: 'Mission Complete',
+                tone: 'mission' as const,
+              }))
+          })()
+        : []
+
+      const newToasts = [...newlyUnlocked, ...newlyCompletedMissions]
+
+      if (newToasts.length > 0) {
         if (view === 'summary') {
           setAchievementToasts((prev) => {
             const existing = new Set(prev.map((item) => item.id))
-            const additions = newlyUnlocked.filter((item) => !existing.has(item.id))
+            const additions = newToasts.filter((item) => !existing.has(item.id))
             return [...prev, ...additions]
           })
-          sfxRef.current.rarity('holo')
+          if (newlyCompletedMissions.length > 0) {
+            sfxRef.current.missionComplete()
+          } else {
+            sfxRef.current.rarity('holo')
+          }
         } else {
           const existingPending = new Set(pendingAchievementToastsRef.current.map((item) => item.id))
-          const additions = newlyUnlocked.filter((item) => !existingPending.has(item.id))
+          const additions = newToasts.filter((item) => !existingPending.has(item.id))
           if (additions.length > 0) {
             pendingAchievementToastsRef.current = [...pendingAchievementToastsRef.current, ...additions]
           }
@@ -838,7 +884,7 @@ export default function RipRealmApp() {
       return null
     }
 
-    const pack = simulatePack(def, pool, { setId })
+    const pack = simulatePack(def, pool, { setId, packType })
     const outcome = applyPackProgression(progression, setId, pack, packType)
     if (outcome.notAffordable) {
       setError(`Not enough coins. A pack costs ${packOpenCost} and you have ${formatCoins(progression.currency)}.`)
@@ -1800,13 +1846,15 @@ export default function RipRealmApp() {
           {achievementToasts.map((toast) => (
             <motion.div
               key={toast.id}
-              className="achievement-toast"
+              className={`achievement-toast ${toast.tone === 'mission' ? 'is-mission' : ''}`}
               initial={{ opacity: 0, y: 14, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.96 }}
               transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
             >
-              <span className="achievement-toast-tag">Achievement Unlocked</span>
+              <span className={`achievement-toast-tag ${toast.tone === 'mission' ? 'is-mission' : ''}`}>
+                {toast.tag || 'Achievement Unlocked'}
+              </span>
               <strong>{toast.label}</strong>
               <p>{toast.description}</p>
             </motion.div>

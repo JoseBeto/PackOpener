@@ -15,7 +15,7 @@ const def = (packs as any).standard
 
 const tally: Record<string, number> = {}
 for (let i = 0; i < 5000; i++) {
-  const pack = simulatePack(def, pool, { setId: 'sv10' })
+  const pack = simulatePack(def, pool, { setId: 'sv10', packType: 'standard' })
   pack.forEach((c) => {
     const key = c.isReverse ? 'reverse' : c.isHolo ? 'holo' : rarityToKey(c.rarity)
     tally[key] = (tally[key] || 0) + 1

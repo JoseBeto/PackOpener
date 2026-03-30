@@ -59,11 +59,13 @@ function rarityToKey(r: string | undefined) {
   return 'Common'
 }
 
-export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { setId?: string }) {
+export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { setId?: string; packType?: 'standard' | 'premium' }) {
   const result: Card[] = []
   const setId = opts?.setId || ''
+  const packType = opts?.packType || 'standard'
   const isPocketSet = getSetFamily(setId) === 'pocket'
-  const GOD_PACK_RATE = isPocketSet ? 0.0006 : 0.00035
+  const baseGodPackRate = isPocketSet ? 0.0006 : 0.00035
+  const GOD_PACK_RATE = packType === 'premium' ? baseGodPackRate * 1.5 : baseGodPackRate
 
   // Get rarity weight map from packDef or use defaults
   const rarityWeightMap = packDef.rarityWeightMap || new Map([
