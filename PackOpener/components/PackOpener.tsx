@@ -405,7 +405,9 @@ export default function RipRealmApp() {
     const mediaQuery = window.matchMedia('(max-width: 640px)')
     const applyScrollLock = () => {
       const shouldLock = ((view === 'select' && !isMobilePackDetailsOpen) || view === 'sleeve' || view === 'opening') && mediaQuery.matches
-      const shouldUseFlowScroll = (view === 'summary' || (view === 'select' && isMobilePackDetailsOpen)) && mediaQuery.matches
+      // Use native document scrolling for summary/details-open on mobile.
+      // This avoids nested scroll containers that can cause snap-back behavior.
+      const shouldUseFlowScroll = false
       document.documentElement.classList.toggle('lock-select-scroll', shouldLock)
       document.body.classList.toggle('lock-select-scroll', shouldLock)
       document.documentElement.classList.toggle('flow-scroll-mobile', shouldUseFlowScroll)
