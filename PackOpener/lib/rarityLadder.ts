@@ -64,6 +64,11 @@ export const supportsMasterBallSet  = (setId: string) => getBallTypes(setId).mas
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {
   const rarity = (card.rarity || '').toLowerCase()
   const special = (card.special || '').toLowerCase()
+  const isMonochromeTier =
+    rarity.includes('black white rare') ||
+    rarity.includes('monochrome') ||
+    special.includes('blackwhiterare') ||
+    special.includes('monochrome')
 
   const isGoldTier =
     special.includes('gold') ||
@@ -75,6 +80,7 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
     rarity.includes('mega hyper')
 
   if (special.includes('godpack')) return 100
+  if (isMonochromeTier) return 95
   if (isGoldTier) return 95
   if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
   if (special.includes('illustration') || rarity.includes('illustration')) return 82

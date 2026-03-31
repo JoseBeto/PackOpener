@@ -15,6 +15,9 @@ const SHOWCASE_STORAGE_KEY = 'po_showcase_v1'
 
 const rarityRanks: Array<[string, number]> = [
   ['godpack', 10],
+  ['black white rare', 9],
+  ['blackwhiterare', 9],
+  ['monochrome', 9],
   ['secret', 9],
   ['hyper', 8],
   ['special illustration', 7],
