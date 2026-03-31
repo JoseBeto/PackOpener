@@ -11,6 +11,7 @@ type Card = {
   // runtime flags set when constructing a pack
   isReverse?: boolean
   isHolo?: boolean
+  isGodPack?: boolean
   special?: string // e.g. 'Illustration', 'DoubleRare', 'SecretRare', 'GodPack'
   variants?: Record<string, any>
 }
@@ -221,6 +222,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isHyper = (card: Card) => rarityText(card).includes('hyper')
   const isSecret = (card: Card) => rarityText(card).includes('secret')
   const isCrown = (card: Card) => rarityText(card).includes('crown')
+  const isBlackWhiteRare = (card: Card) => rarityText(card).includes('black white rare') || rarityText(card).includes('monochrome')
   const isGoldTier = (card: Card) => isSecret(card) || isHyper(card) || isCrown(card)
   const isDoubleRare = (card: Card) => rarityText(card).includes('double rare') || rarityText(card) === 'double rare'
   const isUltraRare = (card: Card) => rarityText(card).includes('ultra') && !isGoldTier(card)
@@ -234,6 +236,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isPocketOneShiny = (card: Card) => rarityText(card).includes('one shiny')
   const isPocketTwoShiny = (card: Card) => rarityText(card).includes('two shiny')
   const isPocketCrown = (card: Card) => rarityText(card).includes('crown')
+  const isTopTierMainlineHit = (card: Card) => isSpecialIllustration(card) || isGoldTier(card) || isBlackWhiteRare(card)
   const isGodPackEligible = (card: Card) => {
     if (isPocketSet) {
       // Pocket analogue of Illustration Rare+ tiers.
@@ -241,7 +244,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     }
 
     // Mainline Illustration Rare+ tiers.
-    return isIllustration(card) || isSpecialIllustration(card) || isUltraRare(card) || isGoldTier(card)
+    return isIllustration(card) || isSpecialIllustration(card) || isUltraRare(card) || isGoldTier(card) || isBlackWhiteRare(card)
   }
   const canBeReverse = (card: Card) => {
     const reverseFlag = (card.variants as any)?.reverse
@@ -264,17 +267,46 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
     const localPool = eligiblePool.slice()
     const godPack: Card[] = []
-    for (let i = 0; i < cardsPerPack; i++) {
-      let picked: Card
-      if (localPool.length > 0) {
-        const idx = Math.floor(Math.random() * localPool.length)
-        picked = { ...localPool.splice(idx, 1)[0] }
-      } else {
-        picked = { ...eligiblePool[Math.floor(Math.random() * eligiblePool.length)] }
+    const drawFrom = (candidates: Card[], fallbackPool: Card[]): Card => {
+      if (candidates.length > 0) {
+        const idx = Math.floor(Math.random() * candidates.length)
+        return { ...candidates.splice(idx, 1)[0] }
       }
+      if (fallbackPool.length > 0) {
+        const idx = Math.floor(Math.random() * fallbackPool.length)
+        return { ...fallbackPool.splice(idx, 1)[0] }
+      }
+      return { ...eligiblePool[Math.floor(Math.random() * eligiblePool.length)] }
+    }
 
+    if (isPocketSet) {
+      for (let i = 0; i < cardsPerPack; i++) {
+        const picked = drawFrom(localPool, localPool)
+        picked.isHolo = true
+        picked.isReverse = false
+        picked.isGodPack = true
+        godPack.push(picked)
+      }
+      return godPack
+    }
+
+    const topTierPool = localPool.filter(isTopTierMainlineHit)
+    const leadHitPool = localPool.filter((card) => isGodPackEligible(card) && !isTopTierMainlineHit(card))
+    const frontHitCount = Math.max(0, cardsPerPack - 3)
+
+    for (let i = 0; i < frontHitCount; i++) {
+      const picked = drawFrom(leadHitPool, localPool)
       picked.isHolo = true
       picked.isReverse = false
+      picked.isGodPack = true
+      godPack.push(picked)
+    }
+
+    for (let i = godPack.length; i < cardsPerPack; i++) {
+      const picked = drawFrom(topTierPool, localPool)
+      picked.isHolo = true
+      picked.isReverse = false
+      picked.isGodPack = true
       godPack.push(picked)
     }
 
@@ -635,11 +667,17 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
   // enforce guarantee: ensure at least `minRareOrAbove` rare or above
   const minRare = packDef.guarantee?.minRareOrAbove || 0
-  const rareOrAbove = result.filter((c) => ['Rare', 'Ultra'].includes(rarityToKey(c.rarity))).length
+  const rareOrAbove = result.filter((c) => ['Rare', 'Ultra', 'Secret'].includes(rarityToKey(c.rarity))).length
   if (rareOrAbove < minRare) {
     const rarePool = (buckets['Rare'] || []).concat(buckets['Ultra'] || [])
     if (rarePool.length > 0) {
-      const idx = result.findIndex((c) => !['Rare', 'Ultra'].includes(rarityToKey(c.rarity)))
+      let idx = -1
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (!['Rare', 'Ultra', 'Secret'].includes(rarityToKey(result[i].rarity))) {
+          idx = i
+          break
+        }
+      }
       if (idx !== -1) result[idx] = rarePool[Math.floor(Math.random() * rarePool.length)]
     }
   }

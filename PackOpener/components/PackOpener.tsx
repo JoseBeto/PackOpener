@@ -1070,8 +1070,7 @@ export default function RipRealmApp() {
     sfxRef.current.tap()
     preloadPackImages(pack)
 
-    // Detect god pack: every card is at least holo/rare tier (no base cards)
-    const packIsGodPack = pack.length >= 4 && pack.every(c => getHighlight(c, setId).tone !== 'base')
+    const packIsGodPack = pack.some((card) => Boolean((card as Card).isGodPack))
     setIsGodPackOpen(packIsGodPack)
 
     setCurrentPack(pack)
