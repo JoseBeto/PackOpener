@@ -9,7 +9,7 @@ import {
   type ProgressionState,
 } from '../lib/progression'
 import CardZoomModal from '../components/CardZoomModal'
-import { loadSessionStats, type SessionStats } from '../lib/sessionStats'
+import { loadSessionStats, SESSION_STATS_EVENT, type SessionStats } from '../lib/sessionStats'
 import { getAchievements } from '../lib/achievements'
 
 type SetMeta = { id: string; name: string }
@@ -41,6 +41,13 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const syncSessionStats = () => setSessionStats(loadSessionStats())
+    window.addEventListener(SESSION_STATS_EVENT, syncSessionStats as EventListener)
+    return () => window.removeEventListener(SESSION_STATS_EVENT, syncSessionStats as EventListener)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
     const mediaQuery = window.matchMedia('(max-width: 640px)')
     const update = () => setIsMobileProfile(mediaQuery.matches)
     update()
@@ -56,6 +63,10 @@ export default function ProfilePage() {
 
   function formatCoins(value: number): string {
     return new Intl.NumberFormat('en-US').format(Math.max(0, Math.floor(value)))
+  }
+
+  function formatSignedCoins(value: number): string {
+    return new Intl.NumberFormat('en-US').format(Math.round(value))
   }
 
   function handleExchangeCard(card: ShowcaseCardEntry) {
@@ -186,6 +197,20 @@ export default function ProfilePage() {
     if (packs >= 20) return 'Rising Trainer'
     return 'Rookie Collector'
   }, [progression?.stats.lifetimePacksOpened])
+
+  const sessionHitRate = useMemo(() => {
+    if (!sessionStats?.packsOpened) return 0
+    return sessionStats.hitCards / sessionStats.packsOpened
+  }, [sessionStats])
+
+  const sessionBestPullLabel = useMemo(() => {
+    if (!sessionStats?.bestPullRank) return 'None yet'
+    if (sessionStats.bestPullRank >= 95) return 'Top-Tier Hit'
+    if (sessionStats.bestPullRank >= 82) return 'Major Pull'
+    if (sessionStats.bestPullRank >= 68) return 'Ultra Rare'
+    if (sessionStats.bestPullRank >= 46) return 'Hit Pull'
+    return 'Low Pull'
+  }, [sessionStats])
 
   const achievements = useMemo(() => {
     if (!progression) return []
@@ -422,7 +447,17 @@ export default function ProfilePage() {
                 <div className="trainer-stat"><span>Elite Pulls</span><strong>{formatCoins(progression?.stats.lifetimeElitePulls || 0)}</strong></div>
                 <div className="trainer-stat"><span>Check-in Streak</span><strong>{formatCoins(progression?.stats.checkInStreak || 0)} claims</strong></div>
                 <div className="trainer-stat"><span>Session Packs</span><strong>{formatCoins(sessionStats?.packsOpened || 0)}</strong></div>
-                <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatCoins(sessionStats?.netCoins || 0)}</strong></div>
+                <div className="trainer-stat"><span>Session Net</span><strong>{(sessionStats?.netCoins || 0) >= 0 ? '+' : ''}{formatSignedCoins(sessionStats?.netCoins || 0)}</strong></div>
+                <div className="trainer-stat"><span>Session Hits</span><strong>{formatCoins(sessionStats?.hitCards || 0)}</strong></div>
+                <div className="trainer-stat"><span>Ultra+ Hits</span><strong>{formatCoins(sessionStats?.ultraHitCards || 0)}</strong></div>
+                <div className="trainer-stat"><span>Major Hits</span><strong>{formatCoins(sessionStats?.majorHitCards || 0)}</strong></div>
+                <div className="trainer-stat"><span>Top-Tier Hits</span><strong>{formatCoins(sessionStats?.topTierHitCards || 0)}</strong></div>
+                <div className="trainer-stat"><span>Hits / Pack</span><strong>{sessionHitRate.toFixed(2)}</strong></div>
+                <div className="trainer-stat trainer-stat-wide">
+                  <span>Best Session Pull</span>
+                  <strong>{sessionStats?.bestPullName || 'None yet'}</strong>
+                  <div className="trainer-stat-detail">{sessionBestPullLabel}{sessionStats?.bestPullSetId ? ` • ${sessionStats.bestPullSetId.toUpperCase()}` : ''}</div>
+                </div>
               </div>
             </section>
 

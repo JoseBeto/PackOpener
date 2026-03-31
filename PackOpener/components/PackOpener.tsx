@@ -277,8 +277,10 @@ export default function RipRealmApp() {
     : 'Standard reverse'
   const currentHighlight = getHighlight(visibleCard, setId)
   const isIrOrAboveTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
-  const hitBeamCount = isCompactMode ? 5 : 7
-  const hitBeamStep = hitBeamCount > 1 ? 120 / (hitBeamCount - 1) : 0
+  const isTopTierHit = currentHighlight.tone === 'secret'
+  const hitBeamCount = isCompactMode ? (isTopTierHit ? 7 : 5) : (isTopTierHit ? 9 : 7)
+  const hitBeamSpread = isTopTierHit ? 144 : 120
+  const hitBeamStep = hitBeamCount > 1 ? hitBeamSpread / (hitBeamCount - 1) : 0
   const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 120 : currentHighlight.tone === 'ultra' ? 90 : currentHighlight.tone === 'holo' ? 68 : 56
   const revealFlipDuration = currentHighlight.tone === 'secret' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.38 : currentHighlight.tone === 'holo' ? 0.34 : 0.3
   const revealToneWashDuration = currentHighlight.tone === 'secret' ? 0.7 : currentHighlight.tone === 'ultra' ? 0.56 : currentHighlight.tone === 'holo' ? 0.4 : 0.28
@@ -1622,7 +1624,7 @@ export default function RipRealmApp() {
                       key={`hit-beam-${visibleCard.id}-${idx}`}
                       className="opening-hit-beam"
                       style={{
-                        '--beam-rot': `${-60 + hitBeamStep * idx}deg`,
+                        '--beam-rot': `${-(hitBeamSpread / 2) + hitBeamStep * idx}deg`,
                         '--beam-delay': `${idx * 0.018}s`,
                       } as React.CSSProperties}
                     />
