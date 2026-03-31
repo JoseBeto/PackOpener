@@ -435,9 +435,9 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .pull-reward-mid{border-color:rgba(122,195,255,0.58);background:linear-gradient(135deg, rgba(90,160,255,0.24), rgba(145,140,255,0.18));color:#deecff}
 .pull-reward-high{border-color:rgba(255,218,120,0.65);background:linear-gradient(135deg, rgba(255,186,84,0.28), rgba(255,228,130,0.2));color:#fff2c6;box-shadow:0 10px 20px rgba(255,202,92,0.24)}
 .opening-stack-hitbox{position:relative;width:min(80vw, 270px);aspect-ratio:195/270;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
-.opening-hit-ripple{position:absolute;inset:-10%;border-radius:999px;pointer-events:none;z-index:6;animation:openingHitRipple .56s ease-out both;border:2px solid rgba(210,185,255,0.72);box-shadow:0 0 0 1px rgba(210,185,255,0.2) inset,0 0 24px rgba(210,185,255,0.24)}
-.opening-hit-ripple-secret{border-color:rgba(255,231,164,0.78);box-shadow:0 0 0 1px rgba(255,231,164,0.24) inset,0 0 26px rgba(255,214,130,0.3)}
-.opening-hit-ripple.is-compact{inset:-6%;animation-duration:.44s;box-shadow:none}
+.opening-hit-ripple{position:absolute;inset:-80%;border-radius:999px;pointer-events:none;z-index:1;animation:openingHitRipple .56s cubic-bezier(.22,.82,.12,1) both;background:radial-gradient(circle, rgba(180,160,255,0.8) 0%, rgba(180,160,255,0.35) 25%, rgba(150,130,255,0.08) 60%, transparent 100%)}
+.opening-hit-ripple-secret{background:radial-gradient(circle, rgba(255,220,100,0.85) 0%, rgba(255,200,80,0.4) 25%, rgba(255,180,60,0.12) 60%, transparent 100%)}
+.opening-hit-ripple.is-compact{inset:-60%;animation-duration:.42s}
 .opening-back{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.28)}
 .opening-current-card{position:absolute;inset:0;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.12));box-shadow:0 16px 30px rgba(0,0,0,0.33), 0 0 0 1px rgba(255,255,255,0.08) inset;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab;isolation:isolate}
 .opening-current-card::before{content:none}
@@ -691,7 +691,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 @keyframes newCardGlow{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes crownSparkleBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}28%{opacity:1;transform:translate(-50%,-50%) scale(1.16)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
 @keyframes crownSparkleRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}18%{opacity:.72}100%{opacity:0;transform:translate(-50%,-50%) scale(1.32)}}
-@keyframes openingHitRipple{0%{opacity:.78;transform:scale(.58)}100%{opacity:0;transform:scale(1.08)}}
+@keyframes openingHitRipple{0%{opacity:1;transform:scale(.92)}100%{opacity:0;transform:scale(1.76)}}
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important}
