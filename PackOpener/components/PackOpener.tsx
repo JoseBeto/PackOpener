@@ -276,6 +276,7 @@ export default function RipRealmApp() {
       : 'Standard + Poke Ball reverse'
     : 'Standard reverse'
   const currentHighlight = getHighlight(visibleCard, setId)
+  const isIrOrAboveTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 120 : currentHighlight.tone === 'ultra' ? 90 : currentHighlight.tone === 'holo' ? 68 : 56
   const revealFlipDuration = currentHighlight.tone === 'secret' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.38 : currentHighlight.tone === 'holo' ? 0.34 : 0.3
   const revealToneWashDuration = currentHighlight.tone === 'secret' ? 0.7 : currentHighlight.tone === 'ultra' ? 0.56 : currentHighlight.tone === 'holo' ? 0.4 : 0.28
@@ -1612,6 +1613,9 @@ export default function RipRealmApp() {
               }}
               aria-label={`Reveal next card. ${remainingCards} card${remainingCards === 1 ? '' : 's'} left after this.`}
             >
+              {isCardFaceUp && isIrOrAboveTone && (
+                <div className={`opening-hit-ripple opening-hit-ripple-${currentHighlight.tone} ${isCompactMode ? 'is-compact' : ''}`} />
+              )}
               {Array.from({ length: Math.min(4, remainingCards) }).map((_, idx) => (
                 <img
                   key={`behind-${idx}`}
