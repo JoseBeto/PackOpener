@@ -938,13 +938,20 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 
 /* Mobile browser-only safety: account for URL bar/chrome height without changing installed app layout. */
 @media (max-width:640px) and (display-mode: browser) {
-  .app-home .site-main{padding-bottom:calc(132px + var(--safe-bottom))}
+  .app-home .site-main{padding-bottom:calc(138px + var(--safe-bottom))}
   .app-home .pack-opener-wrap.is-select-view,
-  .app-home .pack-opener-wrap.is-sleeve-view{height:auto;min-height:0;overflow-y:visible}
+  .app-home .pack-opener-wrap.is-sleeve-view,
+  .app-home .pack-opener-wrap.is-opening-view{height:auto;min-height:0;overflow-y:visible}
   .app-home .pack-opener-wrap.is-select-view .premium-stage-select,
-  .app-home .pack-opener-wrap.is-sleeve-view .premium-stage-sleeve{min-height:auto;max-height:none}
+  .app-home .pack-opener-wrap.is-sleeve-view .premium-stage-sleeve,
+  .app-home .pack-opener-wrap.is-opening-view .premium-stage-opening{flex:unset;min-height:auto;max-height:none;overflow:visible}
   .app-home .pack-opener-wrap.is-select-view .landing-shell{height:auto;min-height:0;overflow:visible}
-  .app-home .pack-opener-wrap.is-select-view .landing-card-focus{flex:unset;min-height:auto;max-height:none;overflow:visible}
+  .app-home .pack-opener-wrap.is-select-view .landing-card-focus{height:auto;flex:unset;min-height:0;max-height:none;overflow:visible}
+}
+
+@media (min-width:641px) and (display-mode: browser) {
+  .site-main{padding-bottom:calc(122px + var(--safe-bottom))}
+  .app-home .site-main{padding-bottom:calc(132px + var(--safe-bottom))}
 }
 
 @media(max-width:480px){
@@ -970,6 +977,19 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
   .card-meta{font-size:10px}
   .deck{width:min(76vw, 220px)}
   .showcase-item{align-items:flex-start}
+}
+
+/* Keep browser-mode overrides after max-width:480 so they cannot be re-overridden. */
+@media (max-width:480px) and (display-mode: browser) {
+  .app-home .site-main{padding-bottom:calc(142px + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-select-view,
+  .app-home .pack-opener-wrap.is-sleeve-view,
+  .app-home .pack-opener-wrap.is-opening-view{height:auto;min-height:0;overflow-y:visible}
+  .app-home .pack-opener-wrap.is-select-view .premium-stage-select,
+  .app-home .pack-opener-wrap.is-sleeve-view .premium-stage-sleeve,
+  .app-home .pack-opener-wrap.is-opening-view .premium-stage-opening{flex:unset;min-height:auto;max-height:none;overflow:visible}
+  .app-home .pack-opener-wrap.is-select-view .landing-shell,
+  .app-home .pack-opener-wrap.is-select-view .landing-card-focus{height:auto;min-height:0;max-height:none;overflow:visible;flex:unset}
 }
 
 /* Holo shimmer overlay */

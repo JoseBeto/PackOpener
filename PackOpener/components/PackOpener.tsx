@@ -298,13 +298,6 @@ export default function RipRealmApp() {
     }
     return counts
   }, [currentPack, setId])
-  const newCardHighlights = useMemo(() => {
-    return currentPack
-      .map((card, index) => ({ card, isNew: Boolean(currentPackNewFlags[index]) }))
-      .filter((entry) => entry.isNew)
-      .slice(0, 3)
-      .map((entry) => entry.card.name)
-  }, [currentPack, currentPackNewFlags])
   const shouldCollapseText = isCompactMode && hasInteracted
 
   function setCoinDisplayLock(locked: boolean, value?: number, options?: { pulse?: boolean; tone?: HighlightTone }) {
@@ -1818,14 +1811,24 @@ export default function RipRealmApp() {
                     <strong>+{formatCoins(lastPackEconomy.milestoneReward)}</strong>
                   </div>
                 </div>
-                <div className="summary-new-row">
-                  <span>New Cards</span>
-                  <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
-                  {lastPackEconomy.milestoneReward > 0 && (
-                    <strong>Treasure chest unlocked: +{formatCoins(lastPackEconomy.milestoneReward)} coins</strong>
+              </motion.div>
+            )}
+
+            {bestPull && (
+              <div className="best-pull-spotlight">
+                <div className="best-pull-card">
+                  {bestPull.images?.small ? (
+                    <img src={bestPull.images.small} alt={bestPull.name} className="card-art" loading="lazy" />
+                  ) : (
+                    <div className="card-status">No Image</div>
                   )}
                 </div>
-              </motion.div>
+                <div className="best-pull-copy">
+                  <h4>{bestPull.name}</h4>
+                  <p>{bestPull.rarity || 'Unknown rarity'}{bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}</p>
+                  <div className={`summary-rarity-chip is-${bestPullHighlight.tone}`}>Best Hit: {bestPullHighlight.label || 'Base Pull'}</div>
+                </div>
+              </div>
             )}
 
 
