@@ -368,8 +368,8 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .opening-view-shell::before{content:'';position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(44% 36% at 50% 26%, rgba(160,232,255,0.12), rgba(160,232,255,0.02) 38%, transparent 70%);opacity:.7;animation:openingAuraDrift 7.6s ease-in-out infinite;z-index:1}
 .opening-view-shell.opening-is-transitioning::before{opacity:.95}
 .opening-hint{font-size:0.88rem;color:var(--muted-strong);text-align:center;line-height:1.45;letter-spacing:.01em}
-.opening-draw-trails{position:absolute;inset:0;pointer-events:none;z-index:5;opacity:0}
-.opening-is-transitioning .opening-draw-trails{opacity:1}
+.opening-draw-trails{display:none}
+.opening-is-transitioning .opening-draw-trails{opacity:0}
 .opening-draw-trails span{position:absolute;left:50%;top:50%;width:240px;height:2px;border-radius:999px;background:linear-gradient(90deg, rgba(255,255,255,0), rgba(180,235,255,0.92), rgba(255,255,255,0));filter:drop-shadow(0 0 10px rgba(130,220,255,0.5));animation:drawTrail .26s ease-out both;--rot:0deg}
 .opening-draw-trails span:nth-child(1){--rot:-12deg;animation-delay:.01s}
 .opening-draw-trails span:nth-child(2){--rot:0deg;animation-delay:.04s}
@@ -437,7 +437,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .opening-stack-hitbox{position:relative;width:min(80vw, 270px);aspect-ratio:195/270;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:pointer;user-select:none;-webkit-user-select:none}
 .opening-back{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,0.28)}
 .opening-current-card{position:absolute;inset:0;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.12));box-shadow:0 16px 30px rgba(0,0,0,0.33), 0 0 0 1px rgba(255,255,255,0.08) inset;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;cursor:grab;isolation:isolate}
-.opening-current-card::before{content:'';position:absolute;inset:-140% auto auto -40%;width:34%;height:300%;background:linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,.2), rgba(255,255,255,0));transform:rotate(8deg);animation:cardSweep 5.8s ease-in-out infinite;pointer-events:none;z-index:7}
+.opening-current-card::before{content:none}
 .opening-current-card.is-suspense{animation:none;filter:none}
 .opening-current-card.is-suspense::after{content:none}
 .opening-current-card:active{cursor:grabbing}
@@ -490,6 +490,7 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 .pack-econ-total.is-negative{border-color:rgba(239,83,80,.55);background:rgba(239,83,80,.14);color:#ffd4d1}
 .pack-econ-balance{width:100%;text-align:center;font-size:.8rem;color:#c7f5ff;font-weight:760}
 .summary-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;width:100%}
+.summary-actions-primary{margin:6px 0 2px}
 .achievement-toast-stack{position:fixed;right:14px;top:calc(84px + var(--safe-top));z-index:120;display:flex;flex-direction:column;gap:8px;max-width:min(340px, calc(100vw - 24px));pointer-events:none}
 .achievement-toast{pointer-events:auto;border:1px solid rgba(120,246,212,0.55);background:linear-gradient(145deg, rgba(11,30,43,0.96), rgba(8,20,38,0.96));border-radius:12px;padding:10px 12px;box-shadow:0 16px 26px rgba(0,0,0,0.34), 0 0 0 1px rgba(120,246,212,0.16) inset}
 .achievement-toast-tag{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;font-weight:900;color:#a7ffe0}
@@ -688,7 +689,33 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 @keyframes crownSparkleBurst{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}28%{opacity:1;transform:translate(-50%,-50%) scale(1.16)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
 @keyframes crownSparkleRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}18%{opacity:.72}100%{opacity:0;transform:translate(-50%,-50%) scale(1.32)}}
 
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+
 @media(max-width:800px){
+  body::before,body::after{animation:none}
+  .premium-stage::after{display:none}
+  .opening-view-shell::before{animation:none;opacity:.28}
+  .selected-pack-card::after{display:none}
+  .flow-shell,.landing-card,.selected-pack-card,.app-nav-dock,.site-header{backdrop-filter:none}
+  .reveal-tone-wash,.selected-pack-glow,.card-burst{display:none}
+  .coin-fly-burst{box-shadow:0 10px 18px rgba(0,0,0,0.28);text-shadow:none}
+  .coin-fly-impact,.coin-fly-trail,.coin-fly-spark{display:none}
+  .card-loading-veil{animation:none;background:rgba(255,255,255,0.04)}
+  .holo-overlay,.holo-sparkle,.reverse-overlay,
+  .pokeball-foil-overlay,.masterball-foil-overlay,.loveball-foil-overlay,.friendball-foil-overlay,.quickball-foil-overlay,.duskball-foil-overlay,
+  .pokeball-foil-overlay-single,.masterball-foil-overlay-single,.loveball-foil-overlay-single,.friendball-foil-overlay-single,.quickball-foil-overlay-single,.duskball-foil-overlay-single,
+  .rocketr-foil-overlay,.energytype-foil-overlay-generic,.energytype-foil-overlay-grass,.energytype-foil-overlay-fire,.energytype-foil-overlay-water,.energytype-foil-overlay-lightning,.energytype-foil-overlay-psychic,.energytype-foil-overlay-fighting,.energytype-foil-overlay-darkness,.energytype-foil-overlay-metal,.energytype-foil-overlay-dragon,.energytype-foil-overlay-colorless,.energytype-foil-overlay-fairy{animation:none !important;mix-blend-mode:normal !important;filter:none !important;opacity:.45}
+
+  /* Keep sleeve flow intact, but drop high-cost ornamental layers on mobile. */
+  .selected-pack-sleeve{animation:none}
+  .sleeve-trace-dot-start{animation:none}
+  .sleeve-stage.is-charging,.sleeve-stage.is-ripping,.sleeve-stage.is-opening .sleeve-body{animation:none}
+  .sleeve-shell{filter:drop-shadow(0 10px 18px rgba(0,0,0,0.26))}
+  .sleeve-foil-wrinkle,.sleeve-foil-crease,.sleeve-foil-sheen,.sleeve-rip-glow,.sleeve-rip-impact,.sleeve-rip-shards{display:none}
+  .sleeve-is-charging::after,.sleeve-is-ripping::before{display:none}
+
   .session-hud{grid-template-columns:repeat(3,minmax(0,1fr))}
   .site-main{padding:16px}
   .hero,.profile-wrap{padding:18px}

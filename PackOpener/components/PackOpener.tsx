@@ -197,8 +197,6 @@ export default function RipRealmApp() {
   const [isRipGestureActive, setIsRipGestureActive] = useState(false)
   const [isCardFaceUp, setIsCardFaceUp] = useState(false)
   const [isRevealSuspense, setIsRevealSuspense] = useState(false)
-  const [isSpotlightMoment, setIsSpotlightMoment] = useState(false)
-  const [isJackpotSettling, setIsJackpotSettling] = useState(false)
   const [isGodPackOpen, setIsGodPackOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isCompactMode, setIsCompactMode] = useState(false)
@@ -229,8 +227,6 @@ export default function RipRealmApp() {
   const sleevePopTimeoutRef = useRef<number | null>(null)
   const sleeveOpenTimeoutRef = useRef<number | null>(null)
   const flipTimeoutRef = useRef<number | null>(null)
-  const spotlightTimeoutRef = useRef<number | null>(null)
-  const jackpotSettleTimeoutRef = useRef<number | null>(null)
   const revealHintTimeoutRef = useRef<number | null>(null)
   const poolRequestSeqRef = useRef(0)
   const poolAbortRef = useRef<AbortController | null>(null)
@@ -280,7 +276,7 @@ export default function RipRealmApp() {
       : 'Standard + Poke Ball reverse'
     : 'Standard reverse'
   const currentHighlight = getHighlight(visibleCard, setId)
-  const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 460 : currentHighlight.tone === 'ultra' ? 380 : currentHighlight.tone === 'holo' ? 260 : 200
+  const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 120 : currentHighlight.tone === 'ultra' ? 90 : currentHighlight.tone === 'holo' ? 68 : 56
   const revealFlipDuration = currentHighlight.tone === 'secret' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.38 : currentHighlight.tone === 'holo' ? 0.34 : 0.3
   const revealToneWashDuration = currentHighlight.tone === 'secret' ? 0.7 : currentHighlight.tone === 'ultra' ? 0.56 : currentHighlight.tone === 'holo' ? 0.4 : 0.28
   const revealToneWashOpacity = isCardFaceUp ? (currentHighlight.tone === 'base' ? 0.24 : currentHighlight.tone === 'holo' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.56 : 0.68) : 0.16
@@ -304,7 +300,6 @@ export default function RipRealmApp() {
       .slice(0, 3)
       .map((entry) => entry.card.name)
   }, [currentPack, currentPackNewFlags])
-  const isBigHitTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
   const shouldCollapseText = isCompactMode && hasInteracted
 
   function setCoinDisplayLock(locked: boolean, value?: number, options?: { pulse?: boolean; tone?: HighlightTone }) {
@@ -673,8 +668,6 @@ export default function RipRealmApp() {
       if (sleevePopTimeoutRef.current) window.clearTimeout(sleevePopTimeoutRef.current)
       if (sleeveOpenTimeoutRef.current) window.clearTimeout(sleeveOpenTimeoutRef.current)
       if (flipTimeoutRef.current) window.clearTimeout(flipTimeoutRef.current)
-      if (spotlightTimeoutRef.current) window.clearTimeout(spotlightTimeoutRef.current)
-      if (jackpotSettleTimeoutRef.current) window.clearTimeout(jackpotSettleTimeoutRef.current)
     }
   }, [])
 
@@ -735,19 +728,9 @@ export default function RipRealmApp() {
       window.clearTimeout(flipTimeoutRef.current)
       flipTimeoutRef.current = null
     }
-    if (spotlightTimeoutRef.current) {
-      window.clearTimeout(spotlightTimeoutRef.current)
-      spotlightTimeoutRef.current = null
-    }
-    if (jackpotSettleTimeoutRef.current) {
-      window.clearTimeout(jackpotSettleTimeoutRef.current)
-      jackpotSettleTimeoutRef.current = null
-    }
 
     const highlight = getHighlight(visibleCard, setId)
     setIsCardFaceUp(false)
-    setIsSpotlightMoment(false)
-    setIsJackpotSettling(false)
     setIsRevealSuspense(highlight.tone === 'secret' || highlight.tone === 'ultra')
     if (highlight.tone === 'secret' || highlight.tone === 'ultra') {
       sfxRef.current.drawSlide(highlight.tone === 'secret' ? 0.98 : 0.88)
@@ -782,24 +765,9 @@ export default function RipRealmApp() {
       }
 
       if (highlight.tone === 'ultra' || highlight.tone === 'secret') {
-        setIsSpotlightMoment(true)
-        setIsJackpotSettling(false)
         sfxRef.current.whoosh()
         sfxRef.current.hitStinger(highlight.tone)
         sfxRef.current.hitRumble(highlight.tone)
-        sfxRef.current.jackpotImpact(highlight.tone)
-        if (!isMuted && typeof window !== 'undefined' && 'vibrate' in navigator) {
-          navigator.vibrate(highlight.tone === 'secret' ? [26, 42, 24, 52, 28] : [20, 34, 18])
-        }
-        spotlightTimeoutRef.current = window.setTimeout(() => {
-          setIsSpotlightMoment(false)
-          setIsJackpotSettling(true)
-          jackpotSettleTimeoutRef.current = window.setTimeout(() => {
-            setIsJackpotSettling(false)
-            jackpotSettleTimeoutRef.current = null
-          }, highlight.tone === 'secret' ? 420 : 320)
-          spotlightTimeoutRef.current = null
-        }, highlight.tone === 'secret' ? 1360 : 1040)
       }
 
       flipTimeoutRef.current = null
@@ -933,14 +901,6 @@ export default function RipRealmApp() {
       window.clearTimeout(flipTimeoutRef.current)
       flipTimeoutRef.current = null
     }
-    if (spotlightTimeoutRef.current) {
-      window.clearTimeout(spotlightTimeoutRef.current)
-      spotlightTimeoutRef.current = null
-    }
-    if (jackpotSettleTimeoutRef.current) {
-      window.clearTimeout(jackpotSettleTimeoutRef.current)
-      jackpotSettleTimeoutRef.current = null
-    }
     if (revealHintTimeoutRef.current) {
       window.clearTimeout(revealHintTimeoutRef.current)
       revealHintTimeoutRef.current = null
@@ -956,8 +916,6 @@ export default function RipRealmApp() {
     setIsRipGestureActive(false)
     setIsCardFaceUp(false)
     setIsRevealSuspense(false)
-    setIsSpotlightMoment(false)
-    setIsJackpotSettling(false)
     setIsMobilePackDetailsOpen(false)
     setShowRevealHint(false)
     setIsTransitioning(false)
@@ -992,20 +950,28 @@ export default function RipRealmApp() {
   function triggerCoinFlyBurst(amount: number, tone: HighlightTone) {
     if (amount <= 0 || typeof window === 'undefined') return
 
+    const lowPowerFx = isCompactMode
     const origin = getCoinBurstOrigin()
     const target = getCoinCounterCenter() ?? { x: window.innerWidth * 0.82, y: window.innerHeight * 0.12 }
     const travelX = Math.round(target.x - origin.x)
     const travelY = Math.round(target.y - origin.y)
     const distance = Math.hypot(travelX, travelY)
-    const baseDuration = tone === 'secret' ? 2.44 : tone === 'ultra' ? 2.26 : tone === 'holo' ? 2.02 : 1.9
-    const distanceScale = Math.min(1.24, Math.max(0.84, distance / 500))
+    const baseDuration = lowPowerFx
+      ? (tone === 'secret' ? 1.18 : tone === 'ultra' ? 1.08 : tone === 'holo' ? 0.98 : 0.9)
+      : (tone === 'secret' ? 2.44 : tone === 'ultra' ? 2.26 : tone === 'holo' ? 2.02 : 1.9)
+    const distanceScale = lowPowerFx
+      ? Math.min(1.08, Math.max(0.9, distance / 560))
+      : Math.min(1.24, Math.max(0.84, distance / 500))
     const duration = Number((baseDuration * distanceScale).toFixed(2))
 
     const burstId = Date.now() + Math.floor(Math.random() * 10000)
-    setCoinFlyBursts((prev) => [
-      ...prev,
-      { id: burstId, amount, tone, originX: origin.x, originY: origin.y, travelX, travelY, duration },
-    ])
+    setCoinFlyBursts((prev) => {
+      const nextBurst = { id: burstId, amount, tone, originX: origin.x, originY: origin.y, travelX, travelY, duration }
+      if (lowPowerFx) {
+        return [nextBurst]
+      }
+      return [...prev, nextBurst]
+    })
     window.setTimeout(() => {
       setCoinFlyBursts((prev) => prev.filter((item) => item.id !== burstId))
     }, Math.round(duration * 1000 + 220))
@@ -1113,7 +1079,7 @@ export default function RipRealmApp() {
   }
 
   function revealNext(direction: 1 | -1 = 1) {
-    if (view !== 'opening' || currentPack.length === 0 || isTransitioning || isSpotlightMoment) return
+    if (view !== 'opening' || currentPack.length === 0 || isTransitioning) return
     markRevealInteraction()
     if (revealIndex >= currentPack.length - 1) {
       setView('summary')
@@ -1380,13 +1346,6 @@ export default function RipRealmApp() {
     <div className={`pack-opener-wrap is-${view}-view ${isMobilePackDetailsOpen ? 'is-pack-details-open' : ''} ${shouldCollapseText ? 'compact-ui' : ''}`}>
       {view === 'select' && (
         <section className="flow-shell landing-shell premium-stage premium-stage-select">
-          <div className="stage-spotlight stage-spotlight-left" />
-          <div className="stage-spotlight stage-spotlight-right" />
-          <div className="stage-particles" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
           <div className="landing-copy">
             <span className="landing-eyebrow">Choose your next pack</span>
             <h2 className="landing-title">Rip. Reveal. Repeat.</h2>
@@ -1457,12 +1416,6 @@ export default function RipRealmApp() {
 
       {view === 'sleeve' && currentPack.length > 0 && (
         <section ref={sleeveSectionRef} className={`flow-shell sleeve-view-shell premium-stage premium-stage-sleeve ${isSleeveCharging ? 'sleeve-is-charging' : ''} ${isSleeveRipping ? 'sleeve-is-ripping' : ''}`}>
-          <div className="stage-spotlight stage-spotlight-center" />
-          <div className="stage-particles" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
           <div className="flow-header">
             <div className="flow-actions">
               <button className="ghost-button" onClick={() => resetFlow('select')}>
@@ -1596,42 +1549,13 @@ export default function RipRealmApp() {
       )}
 
       {hasActiveOpening && visibleCard && (
-        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isSpotlightMoment ? 'opening-spotlight' : ''} ${(isSpotlightMoment || isJackpotSettling) && isBigHitTone ? 'opening-big-hit opening-jackpot-v2 opening-jackpot-v21' : ''} ${isSpotlightMoment && isBigHitTone ? 'is-jackpot-focus' : ''} ${isJackpotSettling && isBigHitTone ? 'is-jackpot-settling' : ''} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
+        <section className={`flow-shell opening-view-shell premium-stage premium-stage-opening premium-tone-${currentHighlight.tone} opening-hit-tone-${currentHighlight.tone} ${isTransitioning ? 'opening-is-transitioning' : ''}`}>
           <motion.div
             className={`reveal-tone-wash reveal-tone-${currentHighlight.tone}`}
             initial={false}
             animate={{ opacity: revealToneWashOpacity }}
             transition={{ duration: revealToneWashDuration, ease: [0.2, 0.9, 0.25, 1] }}
           />
-          <div className="stage-spotlight stage-spotlight-center" />
-          <div className="stage-particles" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </div>
-          {isSpotlightMoment && isBigHitTone && (
-            <>
-              <div className="cinema-bar cinema-bar-top" />
-              <div className="cinema-bar cinema-bar-bottom" />
-              <div className={`jackpot-aura jackpot-aura-${currentHighlight.tone}`} />
-              <div className={`jackpot-flash jackpot-flash-${currentHighlight.tone}`} />
-              <div className={`jackpot-v2-veil jackpot-v2-veil-${currentHighlight.tone}`} />
-              <div className={`jackpot-v2-beams jackpot-v2-beams-${currentHighlight.tone}`} />
-              <div className={`jackpot-rings jackpot-rings-${currentHighlight.tone}`} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
-              <div className={`jackpot-sparks jackpot-sparks-${currentHighlight.tone}`} aria-hidden="true">
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
-            </>
-          )}
           <div className="flow-header">
             <div className="flow-actions">
               <button className="ghost-button" onClick={() => resetFlow('select')}>
@@ -1651,17 +1575,6 @@ export default function RipRealmApp() {
               <span />
             </div>
             {!shouldCollapseText && <div className="opening-hint">Swipe left or right, or tap the card to reveal the next pull</div>}
-            {isSpotlightMoment && currentHighlight.label && (
-              <motion.div
-                className={`spotlight-pill spotlight-pill-${currentHighlight.tone}`}
-                initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                transition={{ duration: 0.22, ease: [0.2, 0.9, 0.25, 1] }}
-              >
-                {currentHighlight.tone === 'secret' ? 'Secret Spotlight' : 'Ultra Spotlight'}
-              </motion.div>
-            )}
             {currentHighlight.label && isCardFaceUp && (
               <motion.div
                 className={`reveal-banner reveal-banner-${currentHighlight.tone}`}
@@ -1699,7 +1612,6 @@ export default function RipRealmApp() {
               }}
               aria-label={`Reveal next card. ${remainingCards} card${remainingCards === 1 ? '' : 's'} left after this.`}
             >
-              {isSpotlightMoment && isBigHitTone && <div className={`hit-wave hit-wave-${currentHighlight.tone}`} />}
               {Array.from({ length: Math.min(4, remainingCards) }).map((_, idx) => (
                 <img
                   key={`behind-${idx}`}
@@ -1743,7 +1655,7 @@ export default function RipRealmApp() {
                   animate="center"
                   exit="exit"
                   transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
-                  className={`opening-current-card ${isSpotlightMoment && isBigHitTone ? 'dramatic-hit' : ''} ${isRevealSuspense ? 'is-suspense' : ''}`}
+                  className={`opening-current-card ${isRevealSuspense ? 'is-suspense' : ''}`}
                 >
                   <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
                   <div className="opening-flip-shell">
@@ -1823,7 +1735,6 @@ export default function RipRealmApp() {
 
       {view === 'summary' && currentPack.length > 0 && (
         <section className="flow-shell summary-view-shell premium-stage premium-stage-summary" ref={summaryRef}>
-          <div className="stage-spotlight stage-spotlight-center" />
           <div className="flow-header" style={{ justifyContent: 'center', textAlign: 'center' }}>
             <div className="flow-meta">Pack complete • {currentPack.length} cards pulled</div>
           </div>
@@ -1832,6 +1743,11 @@ export default function RipRealmApp() {
             <div className="summary-heading">
               <h3>Pack Summary</h3>
               {!shouldCollapseText && <p>Review every card from this pack, zoom in on hits, then open another or pick a new set.</p>}
+            </div>
+
+            <div className="summary-actions summary-actions-primary">
+              <button className="button" onClick={preparePack} disabled={!canAffordPack}>Open Another Pack</button>
+              <button className="ghost-button" onClick={() => resetFlow('select')}>Select New Set</button>
             </div>
 
             {lastPackEconomy && (
@@ -1882,7 +1798,7 @@ export default function RipRealmApp() {
                   </div>
                 </div>
                 <div className="summary-new-row">
-                  <span>New Spotlight</span>
+                  <span>New Cards</span>
                   <strong>{newCardHighlights.length ? newCardHighlights.join(' • ') : 'No new cards this pack'}</strong>
                   {lastPackEconomy.milestoneReward > 0 && (
                     <strong>Treasure chest unlocked: +{formatCoins(lastPackEconomy.milestoneReward)} coins</strong>
@@ -1891,58 +1807,6 @@ export default function RipRealmApp() {
               </motion.div>
             )}
 
-            {bestPull && (
-              <motion.div
-                className={`best-pull-spotlight best-pull-${bestPullHighlight.tone}`}
-                initial={{ opacity: 0, y: 24, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.38, ease: [0.2, 0.9, 0.25, 1] }}
-              >
-                <div
-                  className="best-pull-card clickable-card"
-                  onClick={() =>
-                    setFocusCard({
-                      name: bestPull.name,
-                      image: bestPull.images?.large || bestPull.images?.small,
-                      subtitle: `${bestPull.rarity || 'Common'}${bestPull.isReverse ? ' • Reverse' : ''}${bestPull.isHolo ? ' • Holo' : ''}${bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}`,
-                      isHolo: Boolean(bestPull.isHolo || (bestPull as any).variants?.holo),
-                      isReverse: Boolean(bestPull.isReverse || (bestPull as any).variants?.reverse),
-                      overlayClass: specialOverlayClass(bestPull.special, setId, bestPull),
-                      specialBadgeText: specialBadge(bestPull.special)?.text || null,
-                      specialBadgeClass: specialBadge(bestPull.special)?.cls || null,
-                    })
-                  }
-                >
-                  <motion.div
-                    className={`best-pull-crown crown-${bestPullHighlight.tone}`}
-                    initial={{ opacity: 0, y: -8, scale: 0.84, rotate: -8 }}
-                    animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-                    transition={{ duration: 0.34, delay: 0.18, ease: [0.2, 0.9, 0.25, 1] }}
-                    aria-hidden="true"
-                  >
-                    Crown Pick
-                  </motion.div>
-                  {bestPull.images?.small
-                    ? <img src={bestPull.images.small} alt={bestPull.name} className="card-art" draggable={false} />
-                    : <div className="card-status">No Image</div>}
-                </div>
-                <div className="best-pull-copy">
-                  <span className="landing-eyebrow">Best pull</span>
-                  <h4>{bestPull.name}</h4>
-                  <p>
-                    {bestPull.rarity || 'Common'}
-                    {bestPull.isReverse ? ' • Reverse' : ''}
-                    {bestPull.isHolo ? ' • Holo' : ''}
-                    {bestPull.special ? ` • ${specialLabel(bestPull.special)}` : ''}
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="summary-actions">
-              <button className="button" onClick={preparePack} disabled={!canAffordPack}>Open Another Pack</button>
-              <button className="ghost-button" onClick={() => resetFlow('select')}>Select New Set</button>
-            </div>
 
             <div className="opened-grid summary-grid">
               {currentPack.map((c, i) => {
@@ -2038,13 +1902,13 @@ export default function RipRealmApp() {
             exit={{ opacity: 0 }}
             transition={{ duration: burst.duration, ease: [0.16, 0.86, 0.24, 1] }}
           >
-            <span className="coin-fly-impact" aria-hidden="true" />
-            <span className="coin-fly-trail" aria-hidden="true" />
-            <span className="coin-fly-spark coin-fly-spark-a" aria-hidden="true" />
-            <span className="coin-fly-spark coin-fly-spark-b" aria-hidden="true" />
-            <span className="coin-fly-spark coin-fly-spark-c" aria-hidden="true" />
-            <span className="coin-fly-spark coin-fly-spark-d" aria-hidden="true" />
-            <span className="coin-fly-spark coin-fly-spark-e" aria-hidden="true" />
+            {!isCompactMode && <span className="coin-fly-impact" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-trail" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-spark coin-fly-spark-a" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-spark coin-fly-spark-b" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-spark coin-fly-spark-c" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-spark coin-fly-spark-d" aria-hidden="true" />}
+            {!isCompactMode && <span className="coin-fly-spark coin-fly-spark-e" aria-hidden="true" />}
             <span className="coin-fly-label">+{formatCoins(burst.amount)}</span>
           </motion.div>
             )
