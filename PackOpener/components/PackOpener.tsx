@@ -277,6 +277,8 @@ export default function RipRealmApp() {
     : 'Standard reverse'
   const currentHighlight = getHighlight(visibleCard, setId)
   const isIrOrAboveTone = currentHighlight.tone === 'ultra' || currentHighlight.tone === 'secret'
+  const hitBeamCount = isCompactMode ? 5 : 7
+  const hitBeamStep = hitBeamCount > 1 ? 120 / (hitBeamCount - 1) : 0
   const revealSuspenseDelay = currentHighlight.tone === 'secret' ? 120 : currentHighlight.tone === 'ultra' ? 90 : currentHighlight.tone === 'holo' ? 68 : 56
   const revealFlipDuration = currentHighlight.tone === 'secret' ? 0.42 : currentHighlight.tone === 'ultra' ? 0.38 : currentHighlight.tone === 'holo' ? 0.34 : 0.3
   const revealToneWashDuration = currentHighlight.tone === 'secret' ? 0.7 : currentHighlight.tone === 'ultra' ? 0.56 : currentHighlight.tone === 'holo' ? 0.4 : 0.28
@@ -1614,7 +1616,19 @@ export default function RipRealmApp() {
               aria-label={`Reveal next card. ${remainingCards} card${remainingCards === 1 ? '' : 's'} left after this.`}
             >
               {isCardFaceUp && isIrOrAboveTone && (
-                <div className={`opening-hit-ripple opening-hit-ripple-${currentHighlight.tone} ${isCompactMode ? 'is-compact' : ''}`} />
+                <div className={`opening-hit-burst opening-hit-burst-${currentHighlight.tone} ${isCompactMode ? 'is-compact' : ''}`} aria-hidden="true">
+                  {Array.from({ length: hitBeamCount }).map((_, idx) => (
+                    <span
+                      key={`hit-beam-${visibleCard.id}-${idx}`}
+                      className="opening-hit-beam"
+                      style={{
+                        '--beam-rot': `${-60 + hitBeamStep * idx}deg`,
+                        '--beam-delay': `${idx * 0.018}s`,
+                      } as React.CSSProperties}
+                    />
+                  ))}
+                  <span className="opening-hit-swirl" />
+                </div>
               )}
               {Array.from({ length: Math.min(4, remainingCards) }).map((_, idx) => (
                 <img
@@ -1626,94 +1640,96 @@ export default function RipRealmApp() {
                 />
               ))}
 
-              <AnimatePresence
-                initial={false}
-                custom={swipeDirection}
-                mode="wait"
-                onExitComplete={() => {
-                  dragX.set(0)
-                  setIsTransitioning(false)
-                }}
-              >
-                <motion.div
-                  key={`${visibleCard.id}-${revealIndex}`}
+              <div className={`opening-current-shell ${isCardFaceUp && isIrOrAboveTone ? `is-hit-pop opening-current-shell-${currentHighlight.tone}` : ''} ${isCompactMode ? 'is-compact' : ''}`}>
+                <AnimatePresence
+                  initial={false}
                   custom={swipeDirection}
-                  variants={{
-                    enter: (direction: 1 | -1) => ({ x: direction === 1 ? 180 : -180, opacity: 0.72, scale: 0.98 }),
-                    center: { x: 0, opacity: 1, scale: 1 },
-                    exit: (direction: 1 | -1) => ({ x: direction === 1 ? -260 : 260, opacity: 0, scale: 0.94, rotate: direction === 1 ? -6 : 6 }),
+                  mode="wait"
+                  onExitComplete={() => {
+                    dragX.set(0)
+                    setIsTransitioning(false)
                   }}
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  dragElastic={0.22}
-                  dragMomentum={false}
-                  dragTransition={{ bounceStiffness: 260, bounceDamping: 20 }}
-                  style={{ x: dragX, rotate: dragRotate }}
-                  onDragStart={() => {
-                    setHasInteracted(true)
-                    markRevealInteraction()
-                    suppressClickRef.current = true
-                  }}
-                  onDragEnd={onCardDragEnd}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
-                  className={`opening-current-card ${isRevealSuspense ? 'is-suspense' : ''}`}
                 >
-                  <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
-                  <div className="opening-flip-shell">
-                    <motion.div
-                      className="opening-flip-card"
-                      animate={{ rotateY: isCardFaceUp ? 180 : 0 }}
-                      transition={{ duration: revealFlipDuration, ease: [0.2, 0.9, 0.25, 1] }}
-                    >
-                      <div className="opening-card-face opening-card-face-back">
-                        <img src="/card-back.png" alt="card back" className="opening-back-art" draggable={false} />
-                      </div>
-                      <div className="opening-card-face opening-card-face-front">
-                        {(visibleCard.images?.large || visibleCard.images?.small) ? (
-                          <>
-                            {!loadedImages[visibleCard.id] && <div className="card-loading-veil" />}
-                            <img
-                              src={visibleCard.images.large || visibleCard.images.small}
-                              alt={visibleCard.name}
-                              className="card-art"
-                              draggable={false}
-                              onLoad={() => setLoadedImages((prev) => ({ ...prev, [visibleCard.id]: true }))}
-                              style={{ opacity: loadedImages[visibleCard.id] ? 1 : 0, transition: 'opacity 0.3s ease' }}
-                              loading="eager"
-                            />
-                          </>
-                        ) : (
-                          <div className="card-status">No Image</div>
-                        )}
+                  <motion.div
+                    key={`${visibleCard.id}-${revealIndex}`}
+                    custom={swipeDirection}
+                    variants={{
+                      enter: (direction: 1 | -1) => ({ x: direction === 1 ? 180 : -180, opacity: 0.72, scale: 0.98 }),
+                      center: { x: 0, opacity: 1, scale: 1 },
+                      exit: (direction: 1 | -1) => ({ x: direction === 1 ? -260 : 260, opacity: 0, scale: 0.94, rotate: direction === 1 ? -6 : 6 }),
+                    }}
+                    drag="x"
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.22}
+                    dragMomentum={false}
+                    dragTransition={{ bounceStiffness: 260, bounceDamping: 20 }}
+                    style={{ x: dragX, rotate: dragRotate }}
+                    onDragStart={() => {
+                      setHasInteracted(true)
+                      markRevealInteraction()
+                      suppressClickRef.current = true
+                    }}
+                    onDragEnd={onCardDragEnd}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.24, ease: [0.2, 0.9, 0.25, 1] }}
+                    className={`opening-current-card ${isRevealSuspense ? 'is-suspense' : ''}`}
+                  >
+                    <motion.div className={`card-burst card-burst-${currentHighlight.tone}`} style={{ opacity: dragGlow }} />
+                    <div className="opening-flip-shell">
+                      <motion.div
+                        className="opening-flip-card"
+                        animate={{ rotateY: isCardFaceUp ? 180 : 0 }}
+                        transition={{ duration: revealFlipDuration, ease: [0.2, 0.9, 0.25, 1] }}
+                      >
+                        <div className="opening-card-face opening-card-face-back">
+                          <img src="/card-back.png" alt="card back" className="opening-back-art" draggable={false} />
+                        </div>
+                        <div className="opening-card-face opening-card-face-front">
+                          {(visibleCard.images?.large || visibleCard.images?.small) ? (
+                            <>
+                              {!loadedImages[visibleCard.id] && <div className="card-loading-veil" />}
+                              <img
+                                src={visibleCard.images.large || visibleCard.images.small}
+                                alt={visibleCard.name}
+                                className="card-art"
+                                draggable={false}
+                                onLoad={() => setLoadedImages((prev) => ({ ...prev, [visibleCard.id]: true }))}
+                                style={{ opacity: loadedImages[visibleCard.id] ? 1 : 0, transition: 'opacity 0.3s ease' }}
+                                loading="eager"
+                              />
+                            </>
+                          ) : (
+                            <div className="card-status">No Image</div>
+                          )}
 
-                        {(visibleCard.isHolo || (visibleCard as any).variants?.holo) && (
-                          <>
-                            <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                            <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                          </>
-                        )}
-                        {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
-                          <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
-                        )}
-                        {specialOverlayClass(visibleCard.special, setId, visibleCard) && (
-                          <div className={specialOverlayClass(visibleCard.special, setId, visibleCard)!} />
-                        )}
-                        {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
-                          <div className="card-badge card-badge-right">Reverse</div>
-                        )}
-                        {specialBadge(visibleCard.special) && (
-                          <div className={`card-badge ${specialBadge(visibleCard.special)!.cls}`}>
-                            {specialBadge(visibleCard.special)!.text}
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              </AnimatePresence>
+                          {(visibleCard.isHolo || (visibleCard as any).variants?.holo) && (
+                            <>
+                              <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                              <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                            </>
+                          )}
+                          {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                            <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
+                          )}
+                          {specialOverlayClass(visibleCard.special, setId, visibleCard) && (
+                            <div className={specialOverlayClass(visibleCard.special, setId, visibleCard)!} />
+                          )}
+                          {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                            <div className="card-badge card-badge-right">Reverse</div>
+                          )}
+                          {specialBadge(visibleCard.special) && (
+                            <div className={`card-badge ${specialBadge(visibleCard.special)!.cls}`}>
+                              {specialBadge(visibleCard.special)!.text}
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </div>
 
             <div className="opening-card-info">
