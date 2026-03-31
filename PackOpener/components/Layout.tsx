@@ -35,6 +35,51 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
   }, [router.pathname])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const root = document.documentElement
+    const updateLayoutVars = () => {
+      const visualHeight = window.visualViewport?.height ?? window.innerHeight
+      const headerEl = document.querySelector('.site-header') as HTMLElement | null
+      const navEl = document.querySelector('.app-nav-dock') as HTMLElement | null
+
+      const headerHeight = headerEl ? Math.ceil(headerEl.getBoundingClientRect().height) : 0
+      const navRect = navEl?.getBoundingClientRect()
+      const navHeight = navRect ? Math.ceil(navRect.height) : 0
+      const navBottomGap = navRect ? Math.max(0, Math.ceil(window.innerHeight - navRect.bottom)) : 0
+      const navClearance = Math.max(96, navHeight + navBottomGap + 12)
+
+      root.style.setProperty('--vvh', `${Math.max(320, Math.round(visualHeight))}px`)
+      root.style.setProperty('--header-h', `${Math.max(48, headerHeight)}px`)
+      root.style.setProperty('--nav-clearance', `${navClearance}px`)
+    }
+
+    updateLayoutVars()
+
+    let rafId = 0
+    const scheduleUpdate = () => {
+      if (rafId) return
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0
+        updateLayoutVars()
+      })
+    }
+
+    window.addEventListener('resize', scheduleUpdate)
+    window.addEventListener('orientationchange', scheduleUpdate)
+    window.visualViewport?.addEventListener('resize', scheduleUpdate)
+    window.visualViewport?.addEventListener('scroll', scheduleUpdate)
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', scheduleUpdate)
+      window.removeEventListener('orientationchange', scheduleUpdate)
+      window.visualViewport?.removeEventListener('resize', scheduleUpdate)
+      window.visualViewport?.removeEventListener('scroll', scheduleUpdate)
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof document === 'undefined') return
 
     const isHomeRoute = router.pathname === '/'
