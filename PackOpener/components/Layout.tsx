@@ -47,7 +47,7 @@ export default function Layout({ children, title = 'Rip Realm', description = 'R
       const navRect = navEl?.getBoundingClientRect()
       const navHeight = navRect ? Math.ceil(navRect.height) : 0
       const navBottomGap = navRect ? Math.max(0, Math.ceil(window.innerHeight - navRect.bottom)) : 0
-      const navClearance = Math.max(96, navHeight + navBottomGap + 12)
+      const navClearance = Math.max(124, navHeight + navBottomGap + 16)
 
       root.style.setProperty('--vvh', `${Math.max(320, Math.round(visualHeight))}px`)
       root.style.setProperty('--header-h', `${Math.max(48, headerHeight)}px`)
