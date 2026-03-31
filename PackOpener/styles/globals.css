@@ -948,6 +948,35 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 /* Mobile browser-only safety: account for URL bar/chrome height without changing installed app layout. */
 @media (max-width:640px) and (display-mode: browser) {
   .app-home .site-main{padding-bottom:calc(var(--nav-clearance) + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-select-view .premium-stage-select{
+    height:calc(var(--vvh) - var(--header-h) - var(--nav-clearance) - 8px);
+    min-height:0;
+    max-height:calc(var(--vvh) - var(--header-h) - var(--nav-clearance) - 8px);
+    display:flex;
+    overflow:hidden;
+  }
+  .app-home .pack-opener-wrap.is-select-view .landing-shell{flex:1;min-height:0;overflow:hidden}
+  .app-home .pack-opener-wrap.is-select-view .landing-card-focus{
+    flex:1;
+    min-height:0;
+    overflow:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:calc(10px + var(--safe-bottom));
+  }
+  .app-home .pack-opener-wrap.is-select-view .landing-open-button{
+    position:sticky;
+    bottom:8px;
+    z-index:7;
+    margin-top:10px;
+  }
+  .app-home .pack-opener-wrap.is-select-view .status-panel{
+    position:sticky;
+    bottom:0;
+    z-index:6;
+    padding:6px 0 calc(4px + var(--safe-bottom));
+    background:linear-gradient(180deg, rgba(9,18,36,0), rgba(9,18,36,0.9) 26%, rgba(9,18,36,0.98));
+  }
   .app-home .pack-opener-wrap.is-select-view,
   .app-home .pack-opener-wrap.is-sleeve-view,
   .app-home .pack-opener-wrap.is-opening-view{height:auto;min-height:0;overflow-y:visible}
@@ -991,6 +1020,11 @@ body.flow-scroll-mobile #__next{height:auto;overflow:visible}
 /* Keep browser-mode overrides after max-width:480 so they cannot be re-overridden. */
 @media (max-width:480px) and (display-mode: browser) {
   .app-home .site-main{padding-bottom:calc(var(--nav-clearance) + var(--safe-bottom))}
+  .app-home .pack-opener-wrap.is-select-view .premium-stage-select{
+    height:calc(var(--vvh) - var(--header-h) - var(--nav-clearance) - 6px);
+    max-height:calc(var(--vvh) - var(--header-h) - var(--nav-clearance) - 6px);
+  }
+  .app-home .pack-opener-wrap.is-select-view .landing-open-button{bottom:6px}
   .app-home .pack-opener-wrap.is-select-view,
   .app-home .pack-opener-wrap.is-sleeve-view,
   .app-home .pack-opener-wrap.is-opening-view{height:auto;min-height:0;overflow-y:visible}
