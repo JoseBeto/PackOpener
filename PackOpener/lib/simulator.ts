@@ -39,6 +39,20 @@ function rarityToKey(r: string | undefined) {
   const val = r.toLowerCase()
   if (val.includes('secret') || val.includes('hyper') || val.includes('crown') || val.includes('three star')) return 'Secret'
   if (
+    val.includes('shiny ultra') ||
+    val.includes('shiny rare') ||
+    val.includes('holo rare v') ||
+    val.includes('holo rare vmax') ||
+    val.includes('holo rare vstar') ||
+    val.includes('rare holo lv.x') ||
+    val.includes('radiant rare') ||
+    val.includes('amazing rare') ||
+    val.includes('ace spec') ||
+    val.includes('full art trainer') ||
+    val.includes('rare prime') ||
+    val.includes('legend')
+  ) return 'Ultra'
+  if (
     val.includes('ultra') ||
     val.includes('ex') ||
     val.includes('vmax') ||

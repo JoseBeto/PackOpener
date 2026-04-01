@@ -64,6 +64,20 @@ export const supportsMasterBallSet  = (setId: string) => getBallTypes(setId).mas
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {
   const rarity = (card.rarity || '').toLowerCase()
   const special = (card.special || '').toLowerCase()
+  const isShinyUltraTier = rarity.includes('shiny ultra') || special.includes('shinyultra')
+  const isShinyRareTier = rarity.includes('shiny rare') || special.includes('shinyrare')
+  const isLegacyUltraTier =
+    rarity.includes('holo rare v') ||
+    rarity.includes('holo rare vmax') ||
+    rarity.includes('holo rare vstar') ||
+    rarity.includes('rare holo lv.x') ||
+    rarity.includes('radiant rare') ||
+    rarity.includes('amazing rare') ||
+    rarity.includes('ace spec') ||
+    rarity.includes('full art trainer') ||
+    rarity.includes('rare prime') ||
+    rarity.includes('legend')
+  const isLegacyHoloHitTier = rarity.includes('rare holo') || rarity.includes('holo rare') || rarity.includes('classic collection')
   const isMonochromeTier =
     rarity.includes('black white rare') ||
     rarity.includes('monochrome') ||
@@ -83,8 +97,12 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
   if (isMonochromeTier) return 95
   if (isGoldTier) return 95
   if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
+  if (isLegacyUltraTier) return 74
+  if (isShinyUltraTier) return 74
   if (special.includes('illustration') || rarity.includes('illustration')) return 82
+  if (isShinyRareTier) return 68
   if (rarity.includes('ultra')) return 68
+  if (isLegacyHoloHitTier) return 46
   if (special.includes('reversemasterball')) return 52
   if (special.includes('doublerare') || rarity.includes('double rare')) return 58
   if (
