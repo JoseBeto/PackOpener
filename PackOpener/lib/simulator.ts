@@ -39,8 +39,10 @@ function rarityToKey(r: string | undefined) {
   const val = r.toLowerCase()
   if (val.includes('secret') || val.includes('hyper') || val.includes('crown') || val.includes('three star')) return 'Secret'
   if (
-    val.includes('shiny ultra') ||
-    val.includes('shiny rare') ||
+    val.includes('shiny ultra rare') ||
+    val.includes('shiny rare v') ||
+    val.includes('shiny rare vmax') ||
+    val.includes('shiny rare vstar') ||
     val.includes('holo rare v') ||
     val.includes('holo rare vmax') ||
     val.includes('holo rare vstar') ||
@@ -62,6 +64,8 @@ function rarityToKey(r: string | undefined) {
     val.includes('one shiny') ||
     val.includes('two shiny')
   ) return 'Ultra'
+  // Base Shiny Rare (non-V/VMAX) → Rare bucket for legacy/fallback packs (slot-based packs use isShinyRareBase filter directly)
+  if (val.includes('shiny rare')) return 'Rare'
   if (
     val.includes('rare') ||
     val.includes('holo') ||
@@ -264,12 +268,69 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     const reverseFlag = (card.variants as any)?.reverse
     return reverseFlag !== false
   }
+  // Shiny Rare V/VMAX/VSTAR — EX-tier hit (ultraRare slot)
+  const isShinyRareUltra = (card: Card) => {
+    const t = rarityText(card)
+    return t.includes('shiny rare v') || t.includes('shiny rare vmax') || t.includes('shiny rare vstar') || t.includes('shiny ultra rare')
+  }
+  // Base Shiny Rare (no V/VMAX/VSTAR suffix) — Illustration Rare-tier hit (illustrationRare slot)
+  const isShinyRareBase = (card: Card) => {
+    const t = rarityText(card)
+    return t.includes('shiny rare') && !isShinyRareUltra(card)
+  }
+  // Legacy non-SV hits that should be ultra-rare tier: Radiant, Amazing, ACE SPEC, Rare PRIME, Full Art Trainer, LV.X
+  const isLegacyEXHit = (card: Card) => {
+    const t = rarityText(card)
+    return (
+      t.includes('radiant rare') ||
+      t.includes('amazing rare') ||
+      t.includes('ace spec') ||
+      t.includes('full art trainer') ||
+      t.includes('rare prime') ||
+      t.includes('legend') ||
+      t.includes('rare holo lv.x') ||
+      t.includes('holo rare v') ||
+      t.includes('holo rare vmax') ||
+      t.includes('holo rare vstar')
+    )
+  }
+  // Classic Collection and base Rare Holo / Holo Rare (non-V) — holo-rare-tier hits
+  const isLegacyHoloHit = (card: Card) => {
+    const t = rarityText(card)
+    if (isLegacyEXHit(card)) return false
+    return t.includes('rare holo') || t.includes('holo rare') || t.includes('classic collection')
+  }
   const isBaseRareFamily = (card: Card) => {
     const text = rarityText(card)
     if (!text.includes('rare')) return false
     if (isIllustration(card) || isSpecialIllustration(card) || isDoubleRare(card) || isUltraRare(card) || isHyper(card) || isSecret(card)) return false
+    if (isShinyRareUltra(card) || isShinyRareBase(card) || isLegacyEXHit(card) || isLegacyHoloHit(card)) return false
     return true
   }
+  // Classic era (WOTC / EX era): rarity is just 'Rare' for both holo and non-holo prints;
+  // holo status is encoded in card.variants, not the rarity label.
+  // Detected at runtime so works for base1-5, neo, gym, ex series, etc.
+  const hasExplicitHoloRareLabel = pool.some((c) => {
+    const r = rarityText(c)
+    return r.includes('rare holo') || r.includes('holo rare')
+  })
+  const hasHoloPrintOnlyCard = pool.some(
+    (c) =>
+      rarityText(c) === 'rare' &&
+      (c.variants as any)?.holo === true &&
+      (c.variants as any)?.normal !== true &&
+      (c.variants as any)?.reverse !== true // WOTC era: no reverse holos
+  )
+  const isClassicEraSet = !isPocketSet && !hasExplicitHoloRareLabel && hasHoloPrintOnlyCard
+  // Holo-only Rare card (Base Set holo rares: Charizard, Blastoise, etc.)
+  const isHoloPrintOnlyRare = (card: Card) =>
+    rarityText(card) === 'rare' &&
+    (card.variants as any)?.holo === true &&
+    (card.variants as any)?.normal !== true &&
+    (card.variants as any)?.reverse !== true
+  // Non-holo Rare card (Base Set non-holo rares: Beedrill, Electrode, etc.)
+  const isNonHoloPrintRare = (card: Card) =>
+    rarityText(card) === 'rare' && (card.variants as any)?.normal === true
 
   // decide whether we should use the modern slot-based template
   // support all SV sets (sv01-sv99) and mark newer 2025 eras as modern
@@ -446,14 +507,17 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
            threeStar: 0.03,
            crown: 0.01
          }
-       : (packDef.slotWeights?.rareSlot || {
-           holoRare: 0.53,
-           doubleRare: 0.28,
-           illustrationRare: 0.10,
-           ultraRare: 0.06,
-           specialIllustrationRare: 0.025,
-           goldRare: 0.005
-         })
+       : isClassicEraSet
+         // Classic era (Base, Neo, Gym, EX): ~1/3 packs had a holo rare, ~2/3 non-holo rare
+         ? { holoRare: 0.33, nonHoloRare: 0.67 }
+         : (packDef.slotWeights?.rareSlot || {
+             holoRare: 0.53,
+             doubleRare: 0.28,
+             illustrationRare: 0.10,
+             ultraRare: 0.06,
+             specialIllustrationRare: 0.025,
+             goldRare: 0.005
+           })
     const rareKeys = Object.keys(rareSlotWeights)
     const rareVals = rareKeys.map((k) => rareSlotWeights[k] as number)
     const rareTotal = rareVals.reduce((a, b) => a + b, 0)
@@ -471,8 +535,20 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
 
     let rareCard: Card
      if (chosenRareCategory === 'holoRare') {
-       rareCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'))
+       // Classic era: only pick cards that only exist as holofoil prints
+       const holoCandidates = isClassicEraSet
+         ? pool.filter((c) => isHoloPrintOnlyRare(c))
+         : pool.filter((c) => isBaseRareFamily(c))
+       rareCard = pickFromCandidates(holoCandidates, () => pickByRarity('Rare'))
        rareCard.isHolo = true
+       rareCard.isReverse = false
+       // Tag plain Rare cards picked as holofoil so they register as a hit
+       if (!rareCard.special && rarityText(rareCard) === 'rare') rareCard.special = 'HoloRare'
+     } else if (chosenRareCategory === 'nonHoloRare') {
+       // Classic era non-holo rare slot: pick a non-holo-print card (no holo treatment)
+       const nonHoloCandidates = pool.filter((c) => isNonHoloPrintRare(c))
+       rareCard = pickFromCandidates(nonHoloCandidates, () => pickByRarity('Rare'))
+       rareCard.isHolo = false
        rareCard.isReverse = false
      } else if (chosenRareCategory === 'threeDiamond') {
        rareCard = pickFromCandidates(pool.filter((c) => isPocketThreeDiamond(c)), () => pickByRarity('Rare'))
@@ -505,11 +581,19 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        rareCard.isHolo = true
        if (isPocketSet) rareCard.special = 'DoubleRare'
      } else if (chosenRareCategory === 'illustrationRare') {
-       rareCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'))
+       // Illustration Rare + Shiny Rare (base, non-V) + legacy Holo Rare hits all share this tier
+       rareCard = pickFromCandidates(
+         pool.filter((c) => isIllustration(c) || isShinyRareBase(c) || isLegacyHoloHit(c)),
+         () => pickByRarity('Rare')
+       )
        rareCard.isHolo = true
        if (isPocketSet) rareCard.special = 'Illustration'
      } else if (chosenRareCategory === 'ultraRare') {
-       rareCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
+       // Ultra Rare + Shiny Rare V/VMAX + legacy EX-tier hits (Radiant, Amazing, ACE SPEC, etc.)
+       rareCard = pickFromCandidates(
+         pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)),
+         () => pickByRarity('Ultra')
+       )
        rareCard.isHolo = true
      } else if (chosenRareCategory === 'specialIllustrationRare') {
        rareCard = pickFromCandidates(
@@ -645,7 +729,10 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        bonusCard.isHolo = true
        bonusCard.special = 'GoldRare'
      } else if (chosenBonusCategory === 'illustration') {
-       bonusCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'))
+       bonusCard = pickFromCandidates(
+         pool.filter((c) => isIllustration(c) || isShinyRareBase(c) || isLegacyHoloHit(c)),
+         () => pickByRarity('Rare')
+       )
        bonusCard.isHolo = true
        if (isPocketSet) bonusCard.special = 'Illustration'
      } else if (chosenBonusCategory === 'doubleRare') {
@@ -653,7 +740,10 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        bonusCard.isHolo = true
        if (isPocketSet) bonusCard.special = 'DoubleRare'
      } else if (chosenBonusCategory === 'ultra') {
-       bonusCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'))
+       bonusCard = pickFromCandidates(
+         pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)),
+         () => pickByRarity('Ultra')
+       )
        bonusCard.isHolo = true
      } else if (chosenBonusCategory === 'specialIllustration') {
        bonusCard = pickFromCandidates(

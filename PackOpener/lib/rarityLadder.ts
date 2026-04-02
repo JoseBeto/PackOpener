@@ -103,6 +103,7 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
   if (isShinyRareTier) return 68
   if (rarity.includes('ultra')) return 68
   if (isLegacyHoloHitTier) return 46
+  if (special.includes('holorare')) return 46
   if (special.includes('reversemasterball')) return 52
   if (special.includes('doublerare') || rarity.includes('double rare')) return 58
   if (

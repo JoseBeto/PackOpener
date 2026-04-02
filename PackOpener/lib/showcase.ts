@@ -40,6 +40,7 @@ const rarityRanks: Array<[string, number]> = [
   ['illustration', 5],
   ['rare holo', 5],
   ['holo rare', 5],
+  ['holorare', 5],
   ['radiant rare', 5],
   ['amazing rare', 5],
   ['ace spec', 5],
