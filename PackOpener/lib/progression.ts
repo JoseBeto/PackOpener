@@ -404,7 +404,17 @@ export function getCardExchangeValue(rarity?: string, special?: string): number 
 }
 
 function isGoodPull(card: Card): boolean {
-  return getRarityRank(card.rarity, card.special) >= 5
+  const rarity = (card.rarity || '').toLowerCase()
+  const special = (card.special || '').toLowerCase()
+  const rarityCompact = rarity.replace(/[^a-z0-9]/g, '')
+  const specialCompact = special.replace(/[^a-z0-9]/g, '')
+  const isDoubleRareHit =
+    rarity.includes('double rare') ||
+    special.includes('doublerare') ||
+    rarityCompact === 'rr' ||
+    specialCompact === 'rr'
+
+  return getRarityRank(card.rarity, card.special) >= 5 || isDoubleRareHit
 }
 
 function isElitePull(card: Card): boolean {

@@ -63,10 +63,28 @@ const rarityRanks: Array<[string, number]> = [
 function rankFromValue(value?: string): number {
   if (!value) return 0
   const text = value.toLowerCase()
+  const compact = text.replace(/[^a-z0-9]/g, '')
+
+  // Handle shorthand rarity labels seen on some newly-fetched sets.
+  if (compact === 'sar' || compact === 'sir') return 7
+  if (compact === 'ar') return 5
+  if (compact === 'ur') return 8
+  if (compact === 'ssr') return 8
+  if (compact === 'sr') return 6
+  if (compact === 'rr') return 4
+
   for (const [key, rank] of rarityRanks) {
     if (text.includes(key)) return rank
   }
   return 0
+}
+
+function isDoubleRareHit(rarity?: string, special?: string): boolean {
+  const r = (rarity || '').toLowerCase()
+  const s = (special || '').toLowerCase()
+  const rc = r.replace(/[^a-z0-9]/g, '')
+  const sc = s.replace(/[^a-z0-9]/g, '')
+  return r.includes('double rare') || s.includes('doublerare') || rc === 'rr' || sc === 'rr'
 }
 
 export function getRarityRank(rarity?: string, special?: string): number {
@@ -74,7 +92,7 @@ export function getRarityRank(rarity?: string, special?: string): number {
 }
 
 export function isShowcaseEligible(card: Card): boolean {
-  return getRarityRank(card.rarity, card.special) > 4
+  return getRarityRank(card.rarity, card.special) > 4 || isDoubleRareHit(card.rarity, card.special)
 }
 
 export function getShowcasePulls(): ShowcasePull[] {

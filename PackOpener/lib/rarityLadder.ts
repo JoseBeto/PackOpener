@@ -64,6 +64,8 @@ export const supportsMasterBallSet  = (setId: string) => getBallTypes(setId).mas
 export function getMainlineRank(card: { rarity?: string; special?: string; isReverse?: boolean; isHolo?: boolean }) {
   const rarity = (card.rarity || '').toLowerCase()
   const special = (card.special || '').toLowerCase()
+  const rarityCompact = rarity.replace(/[^a-z0-9]/g, '')
+  const specialCompact = special.replace(/[^a-z0-9]/g, '')
   const isShinyUltraTier = rarity.includes('shiny ultra') || special.includes('shinyultra')
   const isShinyRareTier = rarity.includes('shiny rare') || special.includes('shinyrare')
   const isLegacyUltraTier =
@@ -91,21 +93,32 @@ export function getMainlineRank(card: { rarity?: string; special?: string; isRev
     rarity.includes('hyper') ||
     rarity.includes('secret') ||
     rarity.includes('crown') ||
+    rarityCompact === 'ur' ||
+    rarityCompact === 'ssr' ||
+    specialCompact === 'ur' ||
+    specialCompact === 'ssr' ||
     rarity.includes('mega hyper')
 
   if (special.includes('godpack')) return 100
   if (isMonochromeTier) return 95
   if (isGoldTier) return 95
-  if (special.includes('specialillustration') || rarity.includes('special illustration')) return 90
+  if (
+    special.includes('specialillustration') ||
+    rarity.includes('special illustration') ||
+    rarityCompact === 'sar' ||
+    rarityCompact === 'sir' ||
+    specialCompact === 'sar' ||
+    specialCompact === 'sir'
+  ) return 90
   if (isLegacyUltraTier) return 74
   if (isShinyUltraTier) return 74
-  if (special.includes('illustration') || rarity.includes('illustration')) return 82
+  if (special.includes('illustration') || rarity.includes('illustration') || rarityCompact === 'ar' || specialCompact === 'ar') return 82
   if (isShinyRareTier) return 68
-  if (rarity.includes('ultra')) return 68
+  if (rarity.includes('ultra') || rarityCompact === 'sr' || specialCompact === 'sr') return 68
   if (isLegacyHoloHitTier) return 46
   if (special.includes('holorare')) return 46
   if (special.includes('reversemasterball')) return 52
-  if (special.includes('doublerare') || rarity.includes('double rare')) return 58
+  if (special.includes('doublerare') || rarity.includes('double rare') || rarityCompact === 'rr' || specialCompact === 'rr') return 58
   if (
     special.includes('reversepokeball') ||
     special.includes('reverseloveball') ||
