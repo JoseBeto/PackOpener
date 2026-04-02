@@ -6,8 +6,34 @@ function rarityToKey(r) {
     if (!r)
         return 'Common';
     const val = r.toLowerCase();
+    const compact = val.replace(/[^a-z0-9]/g, '');
+    if (compact === 'sar' || compact === 'sir' || compact === 'ur' || compact === 'ssr')
+        return 'Secret';
+    if (compact === 'sr' || compact === 'rr' || compact === 'ar')
+        return 'Ultra';
+    if (compact === 'r')
+        return 'Rare';
+    if (compact === 'u')
+        return 'Uncommon';
+    if (compact === 'c')
+        return 'Common';
     if (val.includes('secret') || val.includes('hyper') || val.includes('crown') || val.includes('three star'))
         return 'Secret';
+    if (val.includes('shiny ultra rare') ||
+        val.includes('shiny rare v') ||
+        val.includes('shiny rare vmax') ||
+        val.includes('shiny rare vstar') ||
+        val.includes('holo rare v') ||
+        val.includes('holo rare vmax') ||
+        val.includes('holo rare vstar') ||
+        val.includes('rare holo lv.x') ||
+        val.includes('radiant rare') ||
+        val.includes('amazing rare') ||
+        val.includes('ace spec') ||
+        val.includes('full art trainer') ||
+        val.includes('rare prime') ||
+        val.includes('legend'))
+        return 'Ultra';
     if (val.includes('ultra') ||
         val.includes('ex') ||
         val.includes('vmax') ||
@@ -17,6 +43,9 @@ function rarityToKey(r) {
         val.includes('one shiny') ||
         val.includes('two shiny'))
         return 'Ultra';
+    // Base Shiny Rare (non-V/VMAX) → Rare bucket for legacy/fallback packs (slot-based packs use isShinyRareBase filter directly)
+    if (val.includes('shiny rare'))
+        return 'Rare';
     if (val.includes('rare') ||
         val.includes('holo') ||
         val.includes('holofoil') ||
@@ -29,9 +58,13 @@ function rarityToKey(r) {
     return 'Common';
 }
 function simulatePack(packDef, pool, opts) {
+    var _a, _b, _c, _d, _e, _f;
     const result = [];
-    const setId = opts?.setId || '';
+    const setId = (opts === null || opts === void 0 ? void 0 : opts.setId) || '';
+    const packType = (opts === null || opts === void 0 ? void 0 : opts.packType) || 'standard';
     const isPocketSet = (0, rarityLadder_1.getSetFamily)(setId) === 'pocket';
+    const baseGodPackRate = isPocketSet ? 0.0006 : 0.00035;
+    const GOD_PACK_RATE = packType === 'premium' ? baseGodPackRate * 2 : baseGodPackRate;
     // Get rarity weight map from packDef or use defaults
     const rarityWeightMap = packDef.rarityWeightMap || new Map([
         ['Secret', 0.026],
@@ -99,7 +132,9 @@ function simulatePack(packDef, pool, opts) {
         }
         return fallback ? fallback() : pickByRarity();
     }
-    const isAscendedHeroesSet = setId.trim().toLowerCase() === 'me02.5';
+    const normalizedSetId = setId.trim().toLowerCase();
+    const isSVOrMegaSet = /^sv\d/.test(normalizedSetId) || /^me\d/.test(normalizedSetId);
+    const isAscendedHeroesSet = normalizedSetId === 'me02.5';
     const isAscendedHeroesBigHit = (card) => {
         const text = (card.rarity || '').toLowerCase();
         return (text.includes('double rare') ||
@@ -181,14 +216,52 @@ function simulatePack(packDef, pool, opts) {
         // else standard reverse holo — card.special stays undefined
     }
     const rarityText = (card) => (card.rarity || '').toLowerCase();
-    const isSpecialIllustration = (card) => rarityText(card).includes('special illustration');
-    const isIllustration = (card) => rarityText(card).includes('illustration') && !isSpecialIllustration(card);
-    const isHyper = (card) => rarityText(card).includes('hyper');
-    const isSecret = (card) => rarityText(card).includes('secret');
+    const rarityCompact = (card) => rarityText(card).replace(/[^a-z0-9]/g, '');
+    const isSpecialIllustration = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        return text.includes('special illustration') || compact === 'sar' || compact === 'sir';
+    };
+    const isIllustration = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        return (text.includes('illustration') || compact === 'ar') && !isSpecialIllustration(card);
+    };
+    const isHyper = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        return text.includes('hyper') || compact === 'ur' || compact === 'ssr';
+    };
+    const isSecret = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        return text.includes('secret') || compact === 'sr';
+    };
     const isCrown = (card) => rarityText(card).includes('crown');
+    const isBlackWhiteRare = (card) => rarityText(card).includes('black white rare') || rarityText(card).includes('monochrome');
     const isGoldTier = (card) => isSecret(card) || isHyper(card) || isCrown(card);
-    const isDoubleRare = (card) => rarityText(card).includes('double rare') || rarityText(card) === 'double rare';
-    const isUltraRare = (card) => rarityText(card).includes('ultra') && !isGoldTier(card);
+    const isLikelyEXCardByName = (card) => /\bex\b/i.test(card.name || '');
+    const isDoubleRare = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        if (text.includes('double rare') || text === 'double rare' || compact === 'rr')
+            return true;
+        // Defensive fallback for newer SV/Mega cards where upstream rarity may be missing/inconsistent.
+        // Keep EX-name cards in hit-tier slots instead of leaking into base-card picks.
+        if (isSVOrMegaSet && isLikelyEXCardByName(card)) {
+            if (isSpecialIllustration(card) || isGoldTier(card))
+                return false;
+            if (isUltraRare(card))
+                return false;
+            return true;
+        }
+        return false;
+    };
+    const isUltraRare = (card) => {
+        const text = rarityText(card);
+        const compact = rarityCompact(card);
+        return (text.includes('ultra') || compact === 'sr') && !isGoldTier(card);
+    };
     const isPocketOneDiamond = (card) => rarityText(card).includes('one diamond');
     const isPocketTwoDiamond = (card) => rarityText(card).includes('two diamond');
     const isPocketThreeDiamond = (card) => rarityText(card).includes('three diamond');
@@ -199,9 +272,50 @@ function simulatePack(packDef, pool, opts) {
     const isPocketOneShiny = (card) => rarityText(card).includes('one shiny');
     const isPocketTwoShiny = (card) => rarityText(card).includes('two shiny');
     const isPocketCrown = (card) => rarityText(card).includes('crown');
+    const isTopTierMainlineHit = (card) => isSpecialIllustration(card) || isGoldTier(card) || isBlackWhiteRare(card);
+    const isGodPackEligible = (card) => {
+        if (isPocketSet) {
+            // Pocket analogue of Illustration Rare+ tiers.
+            return isPocketOneStar(card) || isPocketTwoStar(card) || isPocketThreeStar(card) || isPocketOneShiny(card) || isPocketTwoShiny(card) || isPocketCrown(card);
+        }
+        // Mainline Illustration Rare+ tiers.
+        return isIllustration(card) || isSpecialIllustration(card) || isUltraRare(card) || isGoldTier(card) || isBlackWhiteRare(card);
+    };
     const canBeReverse = (card) => {
-        const reverseFlag = card.variants?.reverse;
+        var _a;
+        const reverseFlag = (_a = card.variants) === null || _a === void 0 ? void 0 : _a.reverse;
         return reverseFlag !== false;
+    };
+    // Shiny Rare V/VMAX/VSTAR — EX-tier hit (ultraRare slot)
+    const isShinyRareUltra = (card) => {
+        const t = rarityText(card);
+        return t.includes('shiny rare v') || t.includes('shiny rare vmax') || t.includes('shiny rare vstar') || t.includes('shiny ultra rare');
+    };
+    // Base Shiny Rare (no V/VMAX/VSTAR suffix) — Illustration Rare-tier hit (illustrationRare slot)
+    const isShinyRareBase = (card) => {
+        const t = rarityText(card);
+        return t.includes('shiny rare') && !isShinyRareUltra(card);
+    };
+    // Legacy non-SV hits that should be ultra-rare tier: Radiant, Amazing, ACE SPEC, Rare PRIME, Full Art Trainer, LV.X
+    const isLegacyEXHit = (card) => {
+        const t = rarityText(card);
+        return (t.includes('radiant rare') ||
+            t.includes('amazing rare') ||
+            t.includes('ace spec') ||
+            t.includes('full art trainer') ||
+            t.includes('rare prime') ||
+            t.includes('legend') ||
+            t.includes('rare holo lv.x') ||
+            t.includes('holo rare v') ||
+            t.includes('holo rare vmax') ||
+            t.includes('holo rare vstar'));
+    };
+    // Classic Collection and base Rare Holo / Holo Rare (non-V) — holo-rare-tier hits
+    const isLegacyHoloHit = (card) => {
+        const t = rarityText(card);
+        if (isLegacyEXHit(card))
+            return false;
+        return t.includes('rare holo') || t.includes('holo rare') || t.includes('classic collection');
     };
     const isBaseRareFamily = (card) => {
         const text = rarityText(card);
@@ -209,11 +323,101 @@ function simulatePack(packDef, pool, opts) {
             return false;
         if (isIllustration(card) || isSpecialIllustration(card) || isDoubleRare(card) || isUltraRare(card) || isHyper(card) || isSecret(card))
             return false;
+        if (isShinyRareUltra(card) || isShinyRareBase(card) || isLegacyEXHit(card) || isLegacyHoloHit(card))
+            return false;
         return true;
     };
+    const isLowTierMainlineBaseCard = (card) => {
+        if (isDoubleRare(card) || isUltraRare(card) || isGoldTier(card) || isSpecialIllustration(card) || isIllustration(card))
+            return false;
+        if (isShinyRareUltra(card) || isShinyRareBase(card) || isLegacyEXHit(card))
+            return false;
+        if (isSVOrMegaSet && isLikelyEXCardByName(card))
+            return false;
+        return true;
+    };
+    // Classic era (WOTC / EX era): rarity is just 'Rare' for both holo and non-holo prints;
+    // holo status is encoded in card.variants, not the rarity label.
+    // Detected at runtime so works for base1-5, neo, gym, ex series, etc.
+    const hasExplicitHoloRareLabel = pool.some((c) => {
+        const r = rarityText(c);
+        return r.includes('rare holo') || r.includes('holo rare');
+    });
+    const hasHoloPrintOnlyCard = pool.some((c) => {
+        var _a, _b, _c;
+        return rarityText(c) === 'rare' &&
+            ((_a = c.variants) === null || _a === void 0 ? void 0 : _a.holo) === true &&
+            ((_b = c.variants) === null || _b === void 0 ? void 0 : _b.normal) !== true &&
+            ((_c = c.variants) === null || _c === void 0 ? void 0 : _c.reverse) !== true;
+    } // WOTC era: no reverse holos
+    );
+    // Never treat SV/Mega sets as classic-holo era, even if variant data contains holo-only rares.
+    const isClassicEraSet = !isPocketSet && !isSVOrMegaSet && !hasExplicitHoloRareLabel && hasHoloPrintOnlyCard;
+    // Holo-only Rare card (Base Set holo rares: Charizard, Blastoise, etc.)
+    const isHoloPrintOnlyRare = (card) => {
+        var _a, _b, _c;
+        return rarityText(card) === 'rare' &&
+            ((_a = card.variants) === null || _a === void 0 ? void 0 : _a.holo) === true &&
+            ((_b = card.variants) === null || _b === void 0 ? void 0 : _b.normal) !== true &&
+            ((_c = card.variants) === null || _c === void 0 ? void 0 : _c.reverse) !== true;
+    };
+    // Non-holo Rare card (Base Set non-holo rares: Beedrill, Electrode, etc.)
+    const isNonHoloPrintRare = (card) => { var _a; return rarityText(card) === 'rare' && ((_a = card.variants) === null || _a === void 0 ? void 0 : _a.normal) === true; };
     // decide whether we should use the modern slot-based template
     // support all SV sets (sv01-sv99) and mark newer 2025 eras as modern
     const useSlotTemplate = isPocketSet || /^sv\d+/.test(setId) || packDef.template === 'modern';
+    function buildGodPack(cardsPerPack) {
+        const eligiblePool = pool.filter(isGodPackEligible);
+        if (eligiblePool.length === 0)
+            return null;
+        const localPool = eligiblePool.slice();
+        const godPack = [];
+        const drawFrom = (candidates, fallbackPool) => {
+            if (candidates.length > 0) {
+                const idx = Math.floor(Math.random() * candidates.length);
+                return { ...candidates.splice(idx, 1)[0] };
+            }
+            if (fallbackPool.length > 0) {
+                const idx = Math.floor(Math.random() * fallbackPool.length);
+                return { ...fallbackPool.splice(idx, 1)[0] };
+            }
+            return { ...eligiblePool[Math.floor(Math.random() * eligiblePool.length)] };
+        };
+        if (isPocketSet) {
+            for (let i = 0; i < cardsPerPack; i++) {
+                const picked = drawFrom(localPool, localPool);
+                picked.isHolo = true;
+                picked.isReverse = false;
+                picked.isGodPack = true;
+                godPack.push(picked);
+            }
+            return godPack;
+        }
+        const topTierPool = localPool.filter(isTopTierMainlineHit);
+        const leadHitPool = localPool.filter((card) => isGodPackEligible(card) && !isTopTierMainlineHit(card));
+        const frontHitCount = Math.max(0, cardsPerPack - 3);
+        for (let i = 0; i < frontHitCount; i++) {
+            const picked = drawFrom(leadHitPool, localPool);
+            picked.isHolo = true;
+            picked.isReverse = false;
+            picked.isGodPack = true;
+            godPack.push(picked);
+        }
+        for (let i = godPack.length; i < cardsPerPack; i++) {
+            const picked = drawFrom(topTierPool, localPool);
+            picked.isHolo = true;
+            picked.isReverse = false;
+            picked.isGodPack = true;
+            godPack.push(picked);
+        }
+        return godPack;
+    }
+    // Rare full-pack jackpot: every card is Illustration-tier or above.
+    if (Math.random() < GOD_PACK_RATE) {
+        const godPack = buildGodPack(packDef.cardsPerPack || 6);
+        if (godPack)
+            return godPack;
+    }
     if (!useSlotTemplate) {
         // Default generic pack behavior
         const rarityKeys = Object.keys(packDef.rarityDistribution || {});
@@ -264,14 +468,18 @@ function simulatePack(packDef, pool, opts) {
             }
         }
         else {
-            result.push(pickByRarity('Common'));
-            for (let i = 0; i < 2; i++)
-                result.push(pickByRarity('Uncommon'));
+            const baseCommonCandidates = pool.filter((c) => rarityToKey(c.rarity) === 'Common' && isLowTierMainlineBaseCard(c));
+            const baseUncommonCandidates = pool.filter((c) => rarityToKey(c.rarity) === 'Uncommon' && isLowTierMainlineBaseCard(c));
+            const genericLowTierPool = pool.filter((c) => isLowTierMainlineBaseCard(c));
+            result.push(pickFromCandidates(baseCommonCandidates, () => pickFromCandidates(genericLowTierPool, () => pickByRarity('Common'))));
+            for (let i = 0; i < 2; i++) {
+                result.push(pickFromCandidates(baseUncommonCandidates, () => pickFromCandidates(genericLowTierPool, () => pickByRarity('Uncommon'))));
+            }
         }
         // Card 9: Reverse holo slot (can be common, uncommon, or rare)
         const reverseWeights = isPocketSet
             ? { oneDiamond: 0.46, twoDiamond: 0.39, threeDiamond: 0.15 }
-            : (packDef.slotWeights?.reverse || { Common: 0.6, Uncommon: 0.3, Rare: 0.1 });
+            : (((_a = packDef.slotWeights) === null || _a === void 0 ? void 0 : _a.reverse) || { Common: 0.6, Uncommon: 0.3, Rare: 0.1 });
         const revRarityKeys = Object.keys(reverseWeights);
         const revRarityVals = revRarityKeys.map((k) => reverseWeights[k]);
         const reverseTotal = revRarityVals.reduce((a, b) => a + b, 0);
@@ -318,7 +526,7 @@ function simulatePack(packDef, pool, opts) {
         // Holo 53%, Double 28%, Illustration 10%, Ultra 6%, Special Ill 2.5%, Gold 0.5%
         // Pocket custom model:
         // Three Diamond 42%, Four Diamond 31%, One Star 16%, Two Star/Two Shiny 7%, Three Star 3%, Crown 1%
-        const rareSlotWeights = isPocketSet
+        let rareSlotWeights = isPocketSet
             ? {
                 threeDiamond: 0.42,
                 fourDiamond: 0.31,
@@ -327,14 +535,65 @@ function simulatePack(packDef, pool, opts) {
                 threeStar: 0.03,
                 crown: 0.01
             }
-            : (packDef.slotWeights?.rareSlot || {
-                holoRare: 0.53,
-                doubleRare: 0.28,
-                illustrationRare: 0.10,
-                ultraRare: 0.06,
-                specialIllustrationRare: 0.025,
-                goldRare: 0.005
-            });
+            : isClassicEraSet
+                // Classic era (Base, Neo, Gym, EX): ~1/3 packs had a holo rare, ~2/3 non-holo rare
+                ? { holoRare: 0.33, nonHoloRare: 0.67 }
+                : (((_b = packDef.slotWeights) === null || _b === void 0 ? void 0 : _b.rareSlot) || {
+                    holoRare: 0.53,
+                    doubleRare: 0.28,
+                    illustrationRare: 0.10,
+                    ultraRare: 0.06,
+                    specialIllustrationRare: 0.025,
+                    goldRare: 0.005
+                });
+        // Normalise rare-slot weights against what actually exists in the pool.
+        if (!isPocketSet && !isClassicEraSet) {
+            const rareAvailability = {
+                holoRare: pool.filter((c) => isBaseRareFamily(c) || isLegacyHoloHit(c)).length,
+                doubleRare: pool.filter((c) => isDoubleRare(c)).length,
+                illustrationRare: pool.filter((c) => isIllustration(c) || isShinyRareBase(c)).length,
+                ultraRare: pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)).length,
+                specialIllustrationRare: pool.filter((c) => isSpecialIllustration(c)).length,
+                goldRare: pool.filter((c) => isGoldTier(c)).length,
+            };
+            if (isSVOrMegaSet) {
+                // SV/Mega era: configured weights are well-calibrated; just drop absent tiers.
+                const presentEntries = Object.entries(rareSlotWeights).filter(([k]) => (rareAvailability[k] || 0) > 0);
+                const presentTotal = presentEntries.reduce((acc, [, w]) => acc + w, 0);
+                if (presentEntries.length > 0 && presentTotal > 0) {
+                    rareSlotWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, w / presentTotal]));
+                }
+            }
+            else {
+                // Pre-SV mainline (DP / BW / XY / SM / SWSH and anything else not SV/Mega).
+                // Simple removal of absent tiers produces the same ~77 % holo / ~22 % ultra split
+                // for every set regardless of era, because the default ultraRare weight (14 %) is
+                // orders-of-magnitude larger than the ultraRare card proportion in DP/BW sets.
+                //
+                // Instead, derive the slot weight from the actual number of cards in each tier,
+                // scaled by a per-tier multiplier calibrated against a reference SWSH set
+                // (~52 holo rares / ~34 ultra rares / ~12 secret rares → 70% / 26% / 4%).
+                // This gives era-appropriate hit rates: dp1 LV.X ≈ 4%, bw1 Full Art ≈ 3.5%,
+                // swsh7 Alt-Art ≈ 46%, while SV era is left on its own controlled path above.
+                const tierMultipliers = {
+                    holoRare: 0.0135,
+                    doubleRare: 0.0133,
+                    ultraRare: 0.0077,
+                    illustrationRare: 0.0040,
+                    specialIllustrationRare: 0.0030,
+                    goldRare: 0.0033,
+                };
+                const rawWeights = {};
+                for (const [tier, count] of Object.entries(rareAvailability)) {
+                    if (count > 0)
+                        rawWeights[tier] = count * ((_c = tierMultipliers[tier]) !== null && _c !== void 0 ? _c : 0.005);
+                }
+                const rawTotal = Object.values(rawWeights).reduce((a, b) => a + b, 0);
+                if (rawTotal > 0) {
+                    rareSlotWeights = Object.fromEntries(Object.entries(rawWeights).map(([k, w]) => [k, w / rawTotal]));
+                }
+            }
+        }
         const rareKeys = Object.keys(rareSlotWeights);
         const rareVals = rareKeys.map((k) => rareSlotWeights[k]);
         const rareTotal = rareVals.reduce((a, b) => a + b, 0);
@@ -350,8 +609,22 @@ function simulatePack(packDef, pool, opts) {
         }
         let rareCard;
         if (chosenRareCategory === 'holoRare') {
-            rareCard = pickFromCandidates(pool.filter((c) => isBaseRareFamily(c)), () => pickByRarity('Rare'));
+            // Classic era: only pick cards that only exist as holofoil prints
+            const holoCandidates = isClassicEraSet
+                ? pool.filter((c) => isHoloPrintOnlyRare(c))
+                : pool.filter((c) => isBaseRareFamily(c) || (!isSVOrMegaSet && isLegacyHoloHit(c)));
+            rareCard = pickFromCandidates(holoCandidates, () => pickByRarity('Rare'));
             rareCard.isHolo = true;
+            rareCard.isReverse = false;
+            // Tag plain Rare cards picked as holofoil so they register as a hit
+            if (isClassicEraSet && !rareCard.special && rarityText(rareCard) === 'rare')
+                rareCard.special = 'HoloRare';
+        }
+        else if (chosenRareCategory === 'nonHoloRare') {
+            // Classic era non-holo rare slot: pick a non-holo-print card (no holo treatment)
+            const nonHoloCandidates = pool.filter((c) => isNonHoloPrintRare(c));
+            rareCard = pickFromCandidates(nonHoloCandidates, () => pickByRarity('Rare'));
+            rareCard.isHolo = false;
             rareCard.isReverse = false;
         }
         else if (chosenRareCategory === 'threeDiamond') {
@@ -386,21 +659,26 @@ function simulatePack(packDef, pool, opts) {
         else if (chosenRareCategory === 'doubleRare') {
             rareCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'));
             rareCard.isHolo = true;
-            rareCard.special = 'DoubleRare';
+            if (isPocketSet)
+                rareCard.special = 'DoubleRare';
         }
         else if (chosenRareCategory === 'illustrationRare') {
-            rareCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'));
+            // Illustration Rare + Shiny Rare (base, non-V) + legacy Holo Rare hits all share this tier
+            rareCard = pickFromCandidates(pool.filter((c) => isIllustration(c) || isShinyRareBase(c)), () => pickByRarity('Rare'));
             rareCard.isHolo = true;
-            rareCard.special = 'Illustration';
+            if (isPocketSet)
+                rareCard.special = 'Illustration';
         }
         else if (chosenRareCategory === 'ultraRare') {
-            rareCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'));
+            // Ultra Rare + Shiny Rare V/VMAX + legacy EX-tier hits (Radiant, Amazing, ACE SPEC, etc.)
+            rareCard = pickFromCandidates(pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)), () => pickByRarity('Ultra'));
             rareCard.isHolo = true;
         }
         else if (chosenRareCategory === 'specialIllustrationRare') {
             rareCard = pickFromCandidates(pool.filter((c) => isSpecialIllustration(c)), () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra')));
             rareCard.isHolo = true;
-            rareCard.special = 'SpecialIllustration';
+            if (isPocketSet)
+                rareCard.special = 'SpecialIllustration';
         }
         else if (chosenRareCategory === 'hyperRare' || chosenRareCategory === 'goldRare') {
             const secretCandidates = pool.filter((c) => isGoldTier(c));
@@ -411,7 +689,8 @@ function simulatePack(packDef, pool, opts) {
                 rareCard = pickByRarity('Ultra');
             }
             rareCard.isHolo = true;
-            rareCard.special = 'GoldRare';
+            if (isPocketSet)
+                rareCard.special = 'GoldRare';
         }
         else {
             rareCard = pickByRarity('Rare');
@@ -421,7 +700,7 @@ function simulatePack(packDef, pool, opts) {
         // Card 11: Bonus slot
         // Mainline: mostly reverse with low chance for additional hit
         // Pocket: mostly lower diamonds with small chance of extra star/crown hit
-        const bonusWeights = isPocketSet
+        let bonusWeights = isPocketSet
             ? {
                 reversePocket: 0.89,
                 fourDiamond: 0.065,
@@ -430,7 +709,7 @@ function simulatePack(packDef, pool, opts) {
                 threeStar: 0.004,
                 crown: 0.001
             }
-            : (packDef.slotWeights?.bonusSlot || {
+            : (((_d = packDef.slotWeights) === null || _d === void 0 ? void 0 : _d.bonusSlot) || {
                 reverseHolo: 0.915,
                 doubleRare: 0.04,
                 illustration: 0.028,
@@ -438,6 +717,21 @@ function simulatePack(packDef, pool, opts) {
                 specialIllustration: 0.003,
                 gold: 0.001
             });
+        if (!isPocketSet) {
+            const bonusAvailability = {
+                reverseHolo: pool.filter((c) => canBeReverse(c)).length,
+                doubleRare: pool.filter((c) => isDoubleRare(c)).length,
+                illustration: pool.filter((c) => isIllustration(c) || isShinyRareBase(c)).length,
+                ultra: pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)).length,
+                specialIllustration: pool.filter((c) => isSpecialIllustration(c)).length,
+                gold: pool.filter((c) => isGoldTier(c)).length,
+            };
+            const presentEntries = Object.entries(bonusWeights).filter(([k]) => (bonusAvailability[k] || 0) > 0);
+            const presentTotal = presentEntries.reduce((acc, [, w]) => acc + w, 0);
+            if (presentEntries.length > 0 && presentTotal > 0) {
+                bonusWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, w / presentTotal]));
+            }
+        }
         const bonusKeys = Object.keys(bonusWeights);
         const bonusVals = bonusKeys.map((k) => bonusWeights[k]);
         const bonusTotal = bonusVals.reduce((a, b) => a + b, 0);
@@ -454,7 +748,7 @@ function simulatePack(packDef, pool, opts) {
         let bonusCard;
         if (chosenBonusCategory === 'reverseHolo') {
             // Another reverse holo, could be any rarity
-            const bonusRevWeights = packDef.slotWeights?.bonusReverse || { Common: 0.4, Uncommon: 0.4, Rare: 0.2 };
+            const bonusRevWeights = ((_e = packDef.slotWeights) === null || _e === void 0 ? void 0 : _e.bonusReverse) || { Common: 0.4, Uncommon: 0.4, Rare: 0.2 };
             const bonusRevKeys = Object.keys(bonusRevWeights);
             const bonusRevVals = bonusRevKeys.map((k) => bonusRevWeights[k]);
             const bonusRevTotal = bonusRevVals.reduce((a, b) => a + b, 0);
@@ -534,23 +828,26 @@ function simulatePack(packDef, pool, opts) {
             bonusCard.special = 'GoldRare';
         }
         else if (chosenBonusCategory === 'illustration') {
-            bonusCard = pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Rare'));
+            bonusCard = pickFromCandidates(pool.filter((c) => isIllustration(c) || isShinyRareBase(c)), () => pickByRarity('Rare'));
             bonusCard.isHolo = true;
-            bonusCard.special = 'Illustration';
+            if (isPocketSet)
+                bonusCard.special = 'Illustration';
         }
         else if (chosenBonusCategory === 'doubleRare') {
             bonusCard = pickFromCandidates(pool.filter((c) => isDoubleRare(c)), () => pickByRarity('Ultra'));
             bonusCard.isHolo = true;
-            bonusCard.special = 'DoubleRare';
+            if (isPocketSet)
+                bonusCard.special = 'DoubleRare';
         }
         else if (chosenBonusCategory === 'ultra') {
-            bonusCard = pickFromCandidates(pool.filter((c) => isUltraRare(c)), () => pickByRarity('Ultra'));
+            bonusCard = pickFromCandidates(pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)), () => pickByRarity('Ultra'));
             bonusCard.isHolo = true;
         }
         else if (chosenBonusCategory === 'specialIllustration') {
             bonusCard = pickFromCandidates(pool.filter((c) => isSpecialIllustration(c)), () => pickFromCandidates(pool.filter((c) => isIllustration(c)), () => pickByRarity('Ultra')));
             bonusCard.isHolo = true;
-            bonusCard.special = 'SpecialIllustration';
+            if (isPocketSet)
+                bonusCard.special = 'SpecialIllustration';
         }
         else if (chosenBonusCategory === 'secret' || chosenBonusCategory === 'gold') {
             const secretCandidates = pool.filter((c) => isGoldTier(c));
@@ -561,31 +858,28 @@ function simulatePack(packDef, pool, opts) {
                 bonusCard = pickByRarity('Ultra');
             }
             bonusCard.isHolo = true;
-            bonusCard.special = 'GoldRare';
+            if (isPocketSet)
+                bonusCard.special = 'GoldRare';
         }
         else {
             bonusCard = pickByRarity('Rare');
             bonusCard.isHolo = true;
         }
-        // Check for god packs (special ultra-rare cards in certain sets)
-        const godPackSets = ['sv8pt5', 'sv9', 'sv95', 'sv9pt5', 'sv10', 'sv105', 'sv11', 'sv11pt5', 'sv12'];
-        const hasGodPackChance = godPackSets.some(setPattern => setId.includes(setPattern));
-        if (hasGodPackChance) {
-            const r = Math.random();
-            const godPackRate = setId.includes('sv8pt5') || setId.includes('sv95') ? 0.0008 : 0.0003;
-            if (r < godPackRate) {
-                bonusCard.special = 'GodPack';
-            }
-        }
         result.push(bonusCard);
     }
     // enforce guarantee: ensure at least `minRareOrAbove` rare or above
-    const minRare = packDef.guarantee?.minRareOrAbove || 0;
-    const rareOrAbove = result.filter((c) => ['Rare', 'Ultra'].includes(rarityToKey(c.rarity))).length;
+    const minRare = ((_f = packDef.guarantee) === null || _f === void 0 ? void 0 : _f.minRareOrAbove) || 0;
+    const rareOrAbove = result.filter((c) => ['Rare', 'Ultra', 'Secret'].includes(rarityToKey(c.rarity))).length;
     if (rareOrAbove < minRare) {
         const rarePool = (buckets['Rare'] || []).concat(buckets['Ultra'] || []);
         if (rarePool.length > 0) {
-            const idx = result.findIndex((c) => !['Rare', 'Ultra'].includes(rarityToKey(c.rarity)));
+            let idx = -1;
+            for (let i = result.length - 1; i >= 0; i--) {
+                if (!['Rare', 'Ultra', 'Secret'].includes(rarityToKey(result[i].rarity))) {
+                    idx = i;
+                    break;
+                }
+            }
             if (idx !== -1)
                 result[idx] = rarePool[Math.floor(Math.random() * rarePool.length)];
         }

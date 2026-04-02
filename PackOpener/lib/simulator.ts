@@ -37,6 +37,12 @@ type PackDefinition = {
 function rarityToKey(r: string | undefined) {
   if (!r) return 'Common'
   const val = r.toLowerCase()
+  const compact = val.replace(/[^a-z0-9]/g, '')
+  if (compact === 'sar' || compact === 'sir' || compact === 'ur' || compact === 'ssr') return 'Secret'
+  if (compact === 'sr' || compact === 'rr' || compact === 'ar') return 'Ultra'
+  if (compact === 'r') return 'Rare'
+  if (compact === 'u') return 'Uncommon'
+  if (compact === 'c') return 'Common'
   if (val.includes('secret') || val.includes('hyper') || val.includes('crown') || val.includes('three star')) return 'Secret'
   if (
     val.includes('shiny ultra rare') ||
@@ -237,17 +243,35 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   }
 
   const rarityText = (card: Card) => (card.rarity || '').toLowerCase()
-  const isSpecialIllustration = (card: Card) => rarityText(card).includes('special illustration')
-  const isIllustration = (card: Card) => rarityText(card).includes('illustration') && !isSpecialIllustration(card)
-  const isHyper = (card: Card) => rarityText(card).includes('hyper')
-  const isSecret = (card: Card) => rarityText(card).includes('secret')
+  const rarityCompact = (card: Card) => rarityText(card).replace(/[^a-z0-9]/g, '')
+  const isSpecialIllustration = (card: Card) => {
+    const text = rarityText(card)
+    const compact = rarityCompact(card)
+    return text.includes('special illustration') || compact === 'sar' || compact === 'sir'
+  }
+  const isIllustration = (card: Card) => {
+    const text = rarityText(card)
+    const compact = rarityCompact(card)
+    return (text.includes('illustration') || compact === 'ar') && !isSpecialIllustration(card)
+  }
+  const isHyper = (card: Card) => {
+    const text = rarityText(card)
+    const compact = rarityCompact(card)
+    return text.includes('hyper') || compact === 'ur' || compact === 'ssr'
+  }
+  const isSecret = (card: Card) => {
+    const text = rarityText(card)
+    const compact = rarityCompact(card)
+    return text.includes('secret') || compact === 'sr'
+  }
   const isCrown = (card: Card) => rarityText(card).includes('crown')
   const isBlackWhiteRare = (card: Card) => rarityText(card).includes('black white rare') || rarityText(card).includes('monochrome')
   const isGoldTier = (card: Card) => isSecret(card) || isHyper(card) || isCrown(card)
   const isLikelyEXCardByName = (card: Card) => /\bex\b/i.test(card.name || '')
   const isDoubleRare = (card: Card) => {
     const text = rarityText(card)
-    if (text.includes('double rare') || text === 'double rare') return true
+    const compact = rarityCompact(card)
+    if (text.includes('double rare') || text === 'double rare' || compact === 'rr') return true
     // Defensive fallback for newer SV/Mega cards where upstream rarity may be missing/inconsistent.
     // Keep EX-name cards in hit-tier slots instead of leaking into base-card picks.
     if (isSVOrMegaSet && isLikelyEXCardByName(card)) {
@@ -257,7 +281,11 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     }
     return false
   }
-  const isUltraRare = (card: Card) => rarityText(card).includes('ultra') && !isGoldTier(card)
+  const isUltraRare = (card: Card) => {
+    const text = rarityText(card)
+    const compact = rarityCompact(card)
+    return (text.includes('ultra') || compact === 'sr') && !isGoldTier(card)
+  }
   const isPocketOneDiamond = (card: Card) => rarityText(card).includes('one diamond')
   const isPocketTwoDiamond = (card: Card) => rarityText(card).includes('two diamond')
   const isPocketThreeDiamond = (card: Card) => rarityText(card).includes('three diamond')

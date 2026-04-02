@@ -55,26 +55,66 @@ exports.supportsMasterBallSet = supportsMasterBallSet;
 function getMainlineRank(card) {
     const rarity = (card.rarity || '').toLowerCase();
     const special = (card.special || '').toLowerCase();
+    const rarityCompact = rarity.replace(/[^a-z0-9]/g, '');
+    const specialCompact = special.replace(/[^a-z0-9]/g, '');
+    const isShinyUltraTier = rarity.includes('shiny ultra') || special.includes('shinyultra');
+    const isShinyRareTier = rarity.includes('shiny rare') || special.includes('shinyrare');
+    const isLegacyUltraTier = rarity.includes('holo rare v') ||
+        rarity.includes('holo rare vmax') ||
+        rarity.includes('holo rare vstar') ||
+        rarity.includes('rare holo lv.x') ||
+        rarity.includes('radiant rare') ||
+        rarity.includes('amazing rare') ||
+        rarity.includes('ace spec') ||
+        rarity.includes('full art trainer') ||
+        rarity.includes('rare prime') ||
+        rarity.includes('legend');
+    const isLegacyHoloHitTier = rarity.includes('rare holo') || rarity.includes('holo rare') || rarity.includes('classic collection');
+    const isMonochromeTier = rarity.includes('black white rare') ||
+        rarity.includes('monochrome') ||
+        special.includes('blackwhiterare') ||
+        special.includes('monochrome');
     const isGoldTier = special.includes('gold') ||
         special.includes('hyper') ||
         special.includes('secret') ||
         rarity.includes('hyper') ||
         rarity.includes('secret') ||
         rarity.includes('crown') ||
+        rarityCompact === 'ur' ||
+        rarityCompact === 'ssr' ||
+        specialCompact === 'ur' ||
+        specialCompact === 'ssr' ||
         rarity.includes('mega hyper');
     if (special.includes('godpack'))
         return 100;
+    if (isMonochromeTier)
+        return 95;
     if (isGoldTier)
         return 95;
-    if (special.includes('specialillustration') || rarity.includes('special illustration'))
+    if (special.includes('specialillustration') ||
+        rarity.includes('special illustration') ||
+        rarityCompact === 'sar' ||
+        rarityCompact === 'sir' ||
+        specialCompact === 'sar' ||
+        specialCompact === 'sir')
         return 90;
-    if (special.includes('illustration') || rarity.includes('illustration'))
+    if (isLegacyUltraTier)
+        return 74;
+    if (isShinyUltraTier)
+        return 74;
+    if (special.includes('illustration') || rarity.includes('illustration') || rarityCompact === 'ar' || specialCompact === 'ar')
         return 82;
-    if (rarity.includes('ultra'))
+    if (isShinyRareTier)
         return 68;
+    if (rarity.includes('ultra') || rarityCompact === 'sr' || specialCompact === 'sr')
+        return 68;
+    if (isLegacyHoloHitTier)
+        return 46;
+    if (special.includes('holorare'))
+        return 46;
     if (special.includes('reversemasterball'))
         return 52;
-    if (special.includes('doublerare') || rarity.includes('double rare'))
+    if (special.includes('doublerare') || rarity.includes('double rare') || rarityCompact === 'rr' || specialCompact === 'rr')
         return 58;
     if (special.includes('reversepokeball') ||
         special.includes('reverseloveball') ||

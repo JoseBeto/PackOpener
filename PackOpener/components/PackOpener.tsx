@@ -810,7 +810,11 @@ export default function RipRealmApp() {
     setError('')
     setDataSource('')
     try {
-      const res = await fetch(`/api/cards?set=${encodeURIComponent(targetSetId)}`, { signal: controller.signal })
+      const cacheBust = Date.now().toString(36)
+      const res = await fetch(`/api/cards?set=${encodeURIComponent(targetSetId)}&cb=${cacheBust}`, {
+        signal: controller.signal,
+        cache: 'no-store',
+      })
       const data = await res.json()
 
       if (requestId !== poolRequestSeqRef.current || controller.signal.aborted) return
@@ -1004,7 +1008,7 @@ export default function RipRealmApp() {
 
     const pack = simulatePack(def, pool, { setId, packType })
     const outcome = applyPackProgression(progression, setId, pack, packType)
-    if (outcome.notAffordable) {
+      if (outcome.notAffordable) {
       setError(`Not enough coins. A pack costs ${packOpenCost} and you have ${formatCoins(progression.currency)}.`)
       return null
     }
@@ -1698,19 +1702,19 @@ export default function RipRealmApp() {
                             <div className="card-status">No Image</div>
                           )}
 
-                          {(visibleCard.isHolo || (visibleCard as any).variants?.holo) && (
+                          {visibleCard.isHolo && (
                             <>
                               <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                               <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                             </>
                           )}
-                          {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                          {visibleCard.isReverse && (
                             <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                           )}
                           {specialOverlayClass(visibleCard.special, setId, visibleCard) && (
                             <div className={specialOverlayClass(visibleCard.special, setId, visibleCard)!} />
                           )}
-                          {(visibleCard.isReverse || (visibleCard as any).variants?.reverse) && (
+                          {visibleCard.isReverse && (
                             <div className="card-badge card-badge-right">Reverse</div>
                           )}
                           {specialBadge(visibleCard.special) && (
@@ -1876,17 +1880,17 @@ export default function RipRealmApp() {
                       <div className="card-status">No Image</div>
                     )}
 
-                    {(c.isHolo || (c as any).variants?.holo) && (
+                    {c.isHolo && (
                       <>
                         <div className="holo-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                         <div className="holo-sparkle" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                       </>
                     )}
-                    {(c.isReverse || (c as any).variants?.reverse) && (
+                    {c.isReverse && (
                       <div className="reverse-overlay" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} />
                     )}
                     {specialOverlayClass(c.special, setId, c) && <div className={specialOverlayClass(c.special, setId, c)!} />}
-                    {(c.isReverse || (c as any).variants?.reverse) && <div className="card-badge card-badge-right">Reverse</div>}
+                    {c.isReverse && <div className="card-badge card-badge-right">Reverse</div>}
                     {specialBadge(c.special) && (
                       <div className={`card-badge ${specialBadge(c.special)!.cls}`}>
                         {specialBadge(c.special)!.text}

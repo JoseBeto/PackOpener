@@ -7,6 +7,10 @@ import path from 'path'
 
 const API_ROOT = 'https://api.tcgdex.net/v2/en'
 
+function normalizeKey(value?: string) {
+  return String(value || '').trim().toLowerCase()
+}
+
 // Load detailed card database (with rarity info) once
 let detailedCardsCache: any = null
 function loadDetailedCardsDB() {
@@ -37,7 +41,9 @@ function getRarityMap() {
   if (!list.length) return new Map()
   const map = new Map()
   list.forEach((card: any) => {
-    map.set(card.id, card.rarity || 'Common')
+    const id = normalizeKey(card?.id)
+    if (!id) return
+    map.set(id, card.rarity || '')
   })
   return map
 }
@@ -55,8 +61,9 @@ function getCardCategoryMap() {
   if (!list.length) return new Map()
   const map = new Map()
   list.forEach((card: any) => {
-    if (!card?.id) return
-    map.set(card.id, card.category || '')
+    const id = normalizeKey(card?.id)
+    if (!id) return
+    map.set(id, card.category || '')
   })
   return map
 }
@@ -74,8 +81,9 @@ function getCardTypesMap() {
   if (!list.length) return new Map()
   const map = new Map()
   list.forEach((card: any) => {
-    if (!card?.id) return
-    map.set(card.id, Array.isArray(card.types) ? card.types : [])
+    const id = normalizeKey(card?.id)
+    if (!id) return
+    map.set(id, Array.isArray(card.types) ? card.types : [])
   })
   return map
 }
@@ -93,8 +101,9 @@ function getCardVariantsMap() {
   if (!list.length) return new Map()
   const map = new Map()
   list.forEach((card: any) => {
-    if (!card?.id) return
-    map.set(card.id, card.variants || {})
+    const id = normalizeKey(card?.id)
+    if (!id) return
+    map.set(id, card.variants || {})
   })
   return map
 }
@@ -105,15 +114,38 @@ function enrichCardsForRuntime(cards: any[]) {
   const typesMap = getCardTypesMap()
   const variantsMap = getCardVariantsMap()
 
-  return (cards || []).map((card: any) => ({
-    ...card,
-    rarity: card?.rarity || rarityMap.get(card?.id) || 'Common',
-    category: card?.category || categoryMap.get(card?.id) || '',
-    types: Array.isArray(card?.types) ? card.types : (typesMap.get(card?.id) || []),
-    variants: (card?.variants && Object.keys(card.variants).length > 0)
-      ? card.variants
-      : (variantsMap.get(card?.id) || {}),
-  }))
+  return (cards || []).map((card: any) => {
+    const id = normalizeKey(card?.id)
+    const rarity = String(card?.rarity || rarityMap.get(id) || '').trim()
+    return {
+      ...card,
+      rarity: rarity || 'Common',
+      category: card?.category || categoryMap.get(id) || '',
+      types: Array.isArray(card?.types) ? card.types : (typesMap.get(id) || []),
+      variants: (card?.variants && Object.keys(card.variants).length > 0)
+        ? card.variants
+        : (variantsMap.get(id) || {}),
+    }
+  })
+}
+
+async function fetchCardDetailsBatched(ids: string[], concurrency = 8) {
+  const detailsMap = new Map<string, any>()
+  for (let i = 0; i < ids.length; i += concurrency) {
+    const batch = ids.slice(i, i + concurrency)
+    const results = await Promise.allSettled(
+      batch.map((id) => fetchWithCertBypass(`${API_ROOT}/cards/${encodeURIComponent(id)}`))
+    )
+    for (let j = 0; j < results.length; j++) {
+      const result = results[j]
+      if (result.status !== 'fulfilled') continue
+      const detail: any = result.value
+      const id = normalizeKey(detail?.id || batch[j])
+      if (!id) continue
+      detailsMap.set(id, detail)
+    }
+  }
+  return detailsMap
 }
 
 // Create an HTTPS request helper that bypasses certificate verification
@@ -155,24 +187,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('[Cards] Build-time invocation ignored')
     return
   }
+
+  // Prevent stale API responses from being reused by browser/proxy caches.
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
   
   const set = Array.isArray(req.query.set) ? req.query.set[0] : req.query.set
   if (!set) return res.status(400).json({ error: 'Missing `set` query param' })
+  const normalizedSet = normalizeKey(set)
 
   // Check in-memory cache first
-  if (cardMemCache[set] && Date.now() - cardMemCache[set].ts < CACHE_TTL) {
+  if (cardMemCache[normalizedSet] && Date.now() - cardMemCache[normalizedSet].ts < CACHE_TTL) {
     console.log(`[Cards] Returning cached cards for set ${set} from memory`)
-    const enrichedCards = enrichCardsForRuntime(cardMemCache[set].cards)
-    cardMemCache[set] = { ts: cardMemCache[set].ts, cards: enrichedCards }
+    const enrichedCards = enrichCardsForRuntime(cardMemCache[normalizedSet].cards)
+    cardMemCache[normalizedSet] = { ts: cardMemCache[normalizedSet].ts, cards: enrichedCards }
     return res.status(200).json({ count: enrichedCards.length, cards: enrichedCards, cached: true, source: 'memory-cache' })
   }
 
   // Check file cache second
-  const fileCache = getCardsFromCache(set)
+  const fileCache = getCardsFromCache(normalizedSet)
   if (fileCache && fileCache.length > 0) {
     console.log(`[Cards] Loaded ${fileCache.length} cards for ${set} from file cache`)
     const enrichedCards = enrichCardsForRuntime(fileCache)
-    cardMemCache[set] = { ts: Date.now(), cards: enrichedCards }
+    cardMemCache[normalizedSet] = { ts: Date.now(), cards: enrichedCards }
     return res.status(200).json({ count: enrichedCards.length, cards: enrichedCards, cached: true, source: 'file-cache' })
   }
 
@@ -181,7 +219,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     // Fetch cards for the specific set from tcgdex
     // TCGDex endpoint: /v2/en/sets/{setId}
-    const url = `${API_ROOT}/sets/${set}`
+    const url = `${API_ROOT}/sets/${normalizedSet}`
     console.log(`[Cards] Request URL: ${url}`)
 
     const data = await fetchWithCertBypass(url)
@@ -193,6 +231,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const typesMap = getCardTypesMap()
     const variantsMap = getCardVariantsMap()
     const cards = (data.cards || []).map((c: any) => {
+      const id = normalizeKey(c?.id)
       // tcgdex image URLs need format appended: {baseUrl}/low.png or /high.png
       let smallImage = PLACEHOLDER_CARD
       let largeImage = PLACEHOLDER_CARD
@@ -204,8 +243,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         largeImage = `${c.image}/high.png`
       }
 
-      // Use rarity from detailed database, fall back to API response, then 'Common'
-      const rarity = rarityMap.get(c.id) || c.rarity || 'Common'
+      // Use detailed DB / API value now; missing values are backfilled below via /cards/{id}.
+      const rarity = String(rarityMap.get(id) || c.rarity || '').trim()
 
       return {
         id: c.id,
@@ -215,24 +254,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           large: largeImage
         },
         rarity,
-        category: c.category || categoryMap.get(c.id) || '',
-        types: Array.isArray(c.types) ? c.types : (typesMap.get(c.id) || []),
+        category: c.category || categoryMap.get(id) || '',
+        types: Array.isArray(c.types) ? c.types : (typesMap.get(id) || []),
         variants: (c.variants && Object.keys(c.variants).length > 0)
           ? c.variants
-          : (variantsMap.get(c.id) || {}),
-        setId: set,
+          : (variantsMap.get(id) || {}),
+        setId: normalizedSet,
         number: c.localId
       }
     })
 
-    cardMemCache[set] = { ts: Date.now(), cards }
-    setCardsCache(set, cards)
-    return res.status(200).json({ count: cards.length, cards, source: 'tcgdex' })
+    const missingRarityCards = cards.filter((card: any) => !String(card?.rarity || '').trim() && normalizeKey(card?.id))
+    if (missingRarityCards.length > 0) {
+      console.log(`[Cards] Missing rarity for ${missingRarityCards.length} cards in ${normalizedSet}, fetching card details...`)
+      const detailMap = await fetchCardDetailsBatched(missingRarityCards.map((card: any) => String(card.id)))
+      for (const card of cards) {
+        const id = normalizeKey(card?.id)
+        if (!id) continue
+        const detail = detailMap.get(id)
+        if (!detail) continue
+        if (!String(card.rarity || '').trim()) card.rarity = detail.rarity || card.rarity
+        if (!String(card.category || '').trim()) card.category = detail.category || card.category
+        if ((!Array.isArray(card.types) || card.types.length === 0) && Array.isArray(detail.types)) card.types = detail.types
+        if ((!card.variants || Object.keys(card.variants).length === 0) && detail.variants) card.variants = detail.variants
+      }
+    }
+
+    const finalizedCards = cards.map((card: any) => ({
+      ...card,
+      rarity: String(card?.rarity || '').trim() || 'Common',
+      category: card?.category || '',
+      types: Array.isArray(card?.types) ? card.types : [],
+      variants: card?.variants || {},
+    }))
+
+    cardMemCache[normalizedSet] = { ts: Date.now(), cards: finalizedCards }
+    setCardsCache(normalizedSet, finalizedCards)
+    return res.status(200).json({ count: finalizedCards.length, cards: finalizedCards, source: 'tcgdex' })
   } catch (tcgdexError: any) {
     console.log(`[Cards] tcgdex fetch failed (${tcgdexError.message}), generating mock cards`)
     // Generate mock cards for development/fallback
     const mockCards = generateMockCards(150)
-    cardMemCache[set] = { ts: Date.now(), cards: mockCards }
+    cardMemCache[normalizedSet] = { ts: Date.now(), cards: mockCards }
     return res.status(200).json({
       count: mockCards.length,
       cards: mockCards,
