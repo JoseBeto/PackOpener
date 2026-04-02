@@ -80,16 +80,39 @@ function getCardTypesMap() {
   return map
 }
 
+function getCardVariantsMap() {
+  const db = loadDetailedCardsDB()
+  const list = Array.isArray(db)
+    ? db
+    : Array.isArray(db?.cards)
+      ? db.cards
+      : (db && typeof db === 'object'
+          ? Object.values(db).filter(Array.isArray).flat()
+          : [])
+
+  if (!list.length) return new Map()
+  const map = new Map()
+  list.forEach((card: any) => {
+    if (!card?.id) return
+    map.set(card.id, card.variants || {})
+  })
+  return map
+}
+
 function enrichCardsForRuntime(cards: any[]) {
   const rarityMap = getRarityMap()
   const categoryMap = getCardCategoryMap()
   const typesMap = getCardTypesMap()
+  const variantsMap = getCardVariantsMap()
 
   return (cards || []).map((card: any) => ({
     ...card,
     rarity: card?.rarity || rarityMap.get(card?.id) || 'Common',
     category: card?.category || categoryMap.get(card?.id) || '',
     types: Array.isArray(card?.types) ? card.types : (typesMap.get(card?.id) || []),
+    variants: (card?.variants && Object.keys(card.variants).length > 0)
+      ? card.variants
+      : (variantsMap.get(card?.id) || {}),
   }))
 }
 
@@ -168,6 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rarityMap = getRarityMap()
     const categoryMap = getCardCategoryMap()
     const typesMap = getCardTypesMap()
+    const variantsMap = getCardVariantsMap()
     const cards = (data.cards || []).map((c: any) => {
       // tcgdex image URLs need format appended: {baseUrl}/low.png or /high.png
       let smallImage = PLACEHOLDER_CARD
@@ -193,7 +217,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         rarity,
         category: c.category || categoryMap.get(c.id) || '',
         types: Array.isArray(c.types) ? c.types : (typesMap.get(c.id) || []),
-        variants: c.variants || {},
+        variants: (c.variants && Object.keys(c.variants).length > 0)
+          ? c.variants
+          : (variantsMap.get(c.id) || {}),
         setId: set,
         number: c.localId
       }
