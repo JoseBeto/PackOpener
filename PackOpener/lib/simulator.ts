@@ -244,7 +244,19 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
   const isCrown = (card: Card) => rarityText(card).includes('crown')
   const isBlackWhiteRare = (card: Card) => rarityText(card).includes('black white rare') || rarityText(card).includes('monochrome')
   const isGoldTier = (card: Card) => isSecret(card) || isHyper(card) || isCrown(card)
-  const isDoubleRare = (card: Card) => rarityText(card).includes('double rare') || rarityText(card) === 'double rare'
+  const isLikelyEXCardByName = (card: Card) => /\bex\b/i.test(card.name || '')
+  const isDoubleRare = (card: Card) => {
+    const text = rarityText(card)
+    if (text.includes('double rare') || text === 'double rare') return true
+    // Defensive fallback for newer SV/Mega cards where upstream rarity may be missing/inconsistent.
+    // Keep EX-name cards in hit-tier slots instead of leaking into base-card picks.
+    if (isSVOrMegaSet && isLikelyEXCardByName(card)) {
+      if (isSpecialIllustration(card) || isGoldTier(card)) return false
+      if (isUltraRare(card)) return false
+      return true
+    }
+    return false
+  }
   const isUltraRare = (card: Card) => rarityText(card).includes('ultra') && !isGoldTier(card)
   const isPocketOneDiamond = (card: Card) => rarityText(card).includes('one diamond')
   const isPocketTwoDiamond = (card: Card) => rarityText(card).includes('two diamond')
@@ -307,6 +319,12 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     if (!text.includes('rare')) return false
     if (isIllustration(card) || isSpecialIllustration(card) || isDoubleRare(card) || isUltraRare(card) || isHyper(card) || isSecret(card)) return false
     if (isShinyRareUltra(card) || isShinyRareBase(card) || isLegacyEXHit(card) || isLegacyHoloHit(card)) return false
+    return true
+  }
+  const isLowTierMainlineBaseCard = (card: Card) => {
+    if (isDoubleRare(card) || isUltraRare(card) || isGoldTier(card) || isSpecialIllustration(card) || isIllustration(card)) return false
+    if (isShinyRareUltra(card) || isShinyRareBase(card) || isLegacyEXHit(card)) return false
+    if (isSVOrMegaSet && isLikelyEXCardByName(card)) return false
     return true
   }
   // Classic era (WOTC / EX era): rarity is just 'Rare' for both holo and non-holo prints;
@@ -447,8 +465,14 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
         result.push(pickFromCandidates(pool.filter((c) => isPocketTwoDiamond(c)), () => pickByRarity('Uncommon')))
       }
     } else {
-      result.push(pickByRarity('Common'))
-      for (let i = 0; i < 2; i++) result.push(pickByRarity('Uncommon'))
+      const baseCommonCandidates = pool.filter((c) => rarityToKey(c.rarity) === 'Common' && isLowTierMainlineBaseCard(c))
+      const baseUncommonCandidates = pool.filter((c) => rarityToKey(c.rarity) === 'Uncommon' && isLowTierMainlineBaseCard(c))
+      const genericLowTierPool = pool.filter((c) => isLowTierMainlineBaseCard(c))
+
+      result.push(pickFromCandidates(baseCommonCandidates, () => pickFromCandidates(genericLowTierPool, () => pickByRarity('Common'))))
+      for (let i = 0; i < 2; i++) {
+        result.push(pickFromCandidates(baseUncommonCandidates, () => pickFromCandidates(genericLowTierPool, () => pickByRarity('Uncommon'))))
+      }
     }
 
     // Card 9: Reverse holo slot (can be common, uncommon, or rare)
@@ -521,8 +545,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
              specialIllustrationRare: 0.025,
              goldRare: 0.005
            })
-    // For non-SV/Mega sets, normalize away categories that don't exist in the current pool.
-    // This prevents large fallback rates when slots like Double Rare or SIR are absent.
+    // Normalise rare-slot weights against what actually exists in the pool.
     if (!isPocketSet && !isClassicEraSet) {
       const rareAvailability: Record<string, number> = {
         holoRare: pool.filter((c) => isBaseRareFamily(c) || isLegacyHoloHit(c)).length,
@@ -532,10 +555,41 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
         specialIllustrationRare: pool.filter((c) => isSpecialIllustration(c)).length,
         goldRare: pool.filter((c) => isGoldTier(c)).length,
       }
-      const presentEntries = Object.entries(rareSlotWeights).filter(([k]) => (rareAvailability[k] || 0) > 0)
-      const presentTotal = presentEntries.reduce((acc, [, w]) => acc + (w as number), 0)
-      if (presentEntries.length > 0 && presentTotal > 0) {
-        rareSlotWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, (w as number) / presentTotal]))
+
+      if (isSVOrMegaSet) {
+        // SV/Mega era: configured weights are well-calibrated; just drop absent tiers.
+        const presentEntries = Object.entries(rareSlotWeights).filter(([k]) => (rareAvailability[k] || 0) > 0)
+        const presentTotal = presentEntries.reduce((acc, [, w]) => acc + (w as number), 0)
+        if (presentEntries.length > 0 && presentTotal > 0) {
+          rareSlotWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, (w as number) / presentTotal]))
+        }
+      } else {
+        // Pre-SV mainline (DP / BW / XY / SM / SWSH and anything else not SV/Mega).
+        // Simple removal of absent tiers produces the same ~77 % holo / ~22 % ultra split
+        // for every set regardless of era, because the default ultraRare weight (14 %) is
+        // orders-of-magnitude larger than the ultraRare card proportion in DP/BW sets.
+        //
+        // Instead, derive the slot weight from the actual number of cards in each tier,
+        // scaled by a per-tier multiplier calibrated against a reference SWSH set
+        // (~52 holo rares / ~34 ultra rares / ~12 secret rares → 70% / 26% / 4%).
+        // This gives era-appropriate hit rates: dp1 LV.X ≈ 4%, bw1 Full Art ≈ 3.5%,
+        // swsh7 Alt-Art ≈ 46%, while SV era is left on its own controlled path above.
+        const tierMultipliers: Record<string, number> = {
+          holoRare:              0.0135,
+          doubleRare:            0.0133,
+          ultraRare:             0.0077,
+          illustrationRare:      0.0040,
+          specialIllustrationRare: 0.0030,
+          goldRare:              0.0033,
+        }
+        const rawWeights: Record<string, number> = {}
+        for (const [tier, count] of Object.entries(rareAvailability)) {
+          if (count > 0) rawWeights[tier] = count * (tierMultipliers[tier] ?? 0.005)
+        }
+        const rawTotal = Object.values(rawWeights).reduce((a, b) => a + b, 0)
+        if (rawTotal > 0) {
+          rareSlotWeights = Object.fromEntries(Object.entries(rawWeights).map(([k, w]) => [k, w / rawTotal]))
+        }
       }
     }
     const rareKeys = Object.keys(rareSlotWeights)
@@ -563,7 +617,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        rareCard.isHolo = true
        rareCard.isReverse = false
        // Tag plain Rare cards picked as holofoil so they register as a hit
-       if (!rareCard.special && rarityText(rareCard) === 'rare') rareCard.special = 'HoloRare'
+       if (isClassicEraSet && !rareCard.special && rarityText(rareCard) === 'rare') rareCard.special = 'HoloRare'
      } else if (chosenRareCategory === 'nonHoloRare') {
        // Classic era non-holo rare slot: pick a non-holo-print card (no holo treatment)
        const nonHoloCandidates = pool.filter((c) => isNonHoloPrintRare(c))
