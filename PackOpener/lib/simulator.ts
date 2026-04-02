@@ -157,7 +157,9 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
     return fallback ? fallback() : pickByRarity()
   }
 
-  const isAscendedHeroesSet = setId.trim().toLowerCase() === 'me02.5'
+  const normalizedSetId = setId.trim().toLowerCase()
+  const isSVOrMegaSet = /^sv\d/.test(normalizedSetId) || /^me\d/.test(normalizedSetId)
+  const isAscendedHeroesSet = normalizedSetId === 'me02.5'
   const isAscendedHeroesBigHit = (card: Card) => {
     const text = (card.rarity || '').toLowerCase()
     return (
@@ -321,7 +323,8 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
       (c.variants as any)?.normal !== true &&
       (c.variants as any)?.reverse !== true // WOTC era: no reverse holos
   )
-  const isClassicEraSet = !isPocketSet && !hasExplicitHoloRareLabel && hasHoloPrintOnlyCard
+  // Never treat SV/Mega sets as classic-holo era, even if variant data contains holo-only rares.
+  const isClassicEraSet = !isPocketSet && !isSVOrMegaSet && !hasExplicitHoloRareLabel && hasHoloPrintOnlyCard
   // Holo-only Rare card (Base Set holo rares: Charizard, Blastoise, etc.)
   const isHoloPrintOnlyRare = (card: Card) =>
     rarityText(card) === 'rare' &&
@@ -498,7 +501,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      // Holo 53%, Double 28%, Illustration 10%, Ultra 6%, Special Ill 2.5%, Gold 0.5%
      // Pocket custom model:
      // Three Diamond 42%, Four Diamond 31%, One Star 16%, Two Star/Two Shiny 7%, Three Star 3%, Crown 1%
-     const rareSlotWeights = isPocketSet
+     let rareSlotWeights: Record<string, number> = isPocketSet
        ? {
            threeDiamond: 0.42,
            fourDiamond: 0.31,
@@ -518,6 +521,23 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
              specialIllustrationRare: 0.025,
              goldRare: 0.005
            })
+    // For non-SV/Mega sets, normalize away categories that don't exist in the current pool.
+    // This prevents large fallback rates when slots like Double Rare or SIR are absent.
+    if (!isPocketSet && !isClassicEraSet) {
+      const rareAvailability: Record<string, number> = {
+        holoRare: pool.filter((c) => isBaseRareFamily(c) || isLegacyHoloHit(c)).length,
+        doubleRare: pool.filter((c) => isDoubleRare(c)).length,
+        illustrationRare: pool.filter((c) => isIllustration(c) || isShinyRareBase(c)).length,
+        ultraRare: pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)).length,
+        specialIllustrationRare: pool.filter((c) => isSpecialIllustration(c)).length,
+        goldRare: pool.filter((c) => isGoldTier(c)).length,
+      }
+      const presentEntries = Object.entries(rareSlotWeights).filter(([k]) => (rareAvailability[k] || 0) > 0)
+      const presentTotal = presentEntries.reduce((acc, [, w]) => acc + (w as number), 0)
+      if (presentEntries.length > 0 && presentTotal > 0) {
+        rareSlotWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, (w as number) / presentTotal]))
+      }
+    }
     const rareKeys = Object.keys(rareSlotWeights)
     const rareVals = rareKeys.map((k) => rareSlotWeights[k] as number)
     const rareTotal = rareVals.reduce((a, b) => a + b, 0)
@@ -538,7 +558,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        // Classic era: only pick cards that only exist as holofoil prints
        const holoCandidates = isClassicEraSet
          ? pool.filter((c) => isHoloPrintOnlyRare(c))
-         : pool.filter((c) => isBaseRareFamily(c))
+         : pool.filter((c) => isBaseRareFamily(c) || (!isSVOrMegaSet && isLegacyHoloHit(c)))
        rareCard = pickFromCandidates(holoCandidates, () => pickByRarity('Rare'))
        rareCard.isHolo = true
        rareCard.isReverse = false
@@ -583,7 +603,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      } else if (chosenRareCategory === 'illustrationRare') {
        // Illustration Rare + Shiny Rare (base, non-V) + legacy Holo Rare hits all share this tier
        rareCard = pickFromCandidates(
-         pool.filter((c) => isIllustration(c) || isShinyRareBase(c) || isLegacyHoloHit(c)),
+         pool.filter((c) => isIllustration(c) || isShinyRareBase(c)),
          () => pickByRarity('Rare')
        )
        rareCard.isHolo = true
@@ -621,7 +641,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
      // Card 11: Bonus slot
      // Mainline: mostly reverse with low chance for additional hit
      // Pocket: mostly lower diamonds with small chance of extra star/crown hit
-     const bonusWeights = isPocketSet
+     let bonusWeights: Record<string, number> = isPocketSet
        ? {
            reversePocket: 0.89,
            fourDiamond: 0.065,
@@ -638,6 +658,21 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
            specialIllustration: 0.003,
            gold: 0.001
          })
+    if (!isPocketSet) {
+       const bonusAvailability: Record<string, number> = {
+         reverseHolo: pool.filter((c) => canBeReverse(c)).length,
+         doubleRare: pool.filter((c) => isDoubleRare(c)).length,
+         illustration: pool.filter((c) => isIllustration(c) || isShinyRareBase(c)).length,
+         ultra: pool.filter((c) => isUltraRare(c) || isShinyRareUltra(c) || isLegacyEXHit(c)).length,
+         specialIllustration: pool.filter((c) => isSpecialIllustration(c)).length,
+         gold: pool.filter((c) => isGoldTier(c)).length,
+       }
+       const presentEntries = Object.entries(bonusWeights).filter(([k]) => (bonusAvailability[k] || 0) > 0)
+       const presentTotal = presentEntries.reduce((acc, [, w]) => acc + (w as number), 0)
+       if (presentEntries.length > 0 && presentTotal > 0) {
+         bonusWeights = Object.fromEntries(presentEntries.map(([k, w]) => [k, (w as number) / presentTotal]))
+       }
+     }
      const bonusKeys = Object.keys(bonusWeights)
      const bonusVals = bonusKeys.map((k) => bonusWeights[k] as number)
      const bonusTotal = bonusVals.reduce((a, b) => a + b, 0)
@@ -730,7 +765,7 @@ export function simulatePack(packDef: PackDefinition, pool: Card[], opts?: { set
        bonusCard.special = 'GoldRare'
      } else if (chosenBonusCategory === 'illustration') {
        bonusCard = pickFromCandidates(
-         pool.filter((c) => isIllustration(c) || isShinyRareBase(c) || isLegacyHoloHit(c)),
+         pool.filter((c) => isIllustration(c) || isShinyRareBase(c)),
          () => pickByRarity('Rare')
        )
        bonusCard.isHolo = true
