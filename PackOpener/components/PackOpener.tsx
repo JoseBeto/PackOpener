@@ -3,7 +3,7 @@ import { AnimatePresence, animate, motion, useMotionValue, useSpring, useTransfo
 import PackSelector from './PackSelector'
 import packs from '../data/packs.json'
 import { simulatePack, type Card } from '../lib/simulator'
-import { addShowcasePulls } from '../lib/showcase'
+import { addShowcasePulls, getRarityRank } from '../lib/showcase'
 import {
   applyPackProgression,
   claimSetCompletionMilestones,
@@ -153,13 +153,27 @@ function specialOverlayClass(special: string | undefined, setId: string, card?: 
 
 type HighlightTone = 'base' | 'holo' | 'ultra' | 'secret'
 function getHighlight(card: Card | null | undefined, setId: string): { label: string | null; tone: HighlightTone } {
-  const rank = getCardRankBySet(card, setId)
-  if (!card || rank < 40) return { label: null, tone: 'base' }
-  if (rank >= 95) return { label: 'Secret Hit', tone: 'secret' }
-  if (rank >= 82) return { label: 'Major Pull', tone: 'secret' }
-  if (rank >= 68) return { label: 'Ultra Rare', tone: 'ultra' }
-  if (rank >= 46) return { label: 'Shiny Pull', tone: 'holo' }
-  return { label: 'Holo Hit', tone: 'holo' }
+  if (!card) return { label: null, tone: 'base' }
+
+  // Use semantic rarity (rarity/special text), not finish flags.
+  // Reverse/holo finishes are common and should not be promoted to hit-tier labels.
+  const rarityRank = getRarityRank(card.rarity, card.special)
+  const rarity = (card.rarity || '').toLowerCase()
+  const special = (card.special || '').toLowerCase()
+  const compactRarity = rarity.replace(/[^a-z0-9]/g, '')
+  const compactSpecial = special.replace(/[^a-z0-9]/g, '')
+  const isDoubleRareHit =
+    rarity.includes('double rare') ||
+    special.includes('doublerare') ||
+    compactRarity === 'rr' ||
+    compactSpecial === 'rr'
+
+  if (rarityRank >= 9) return { label: 'Secret Hit', tone: 'secret' }
+  if (rarityRank >= 7) return { label: 'Major Pull', tone: 'secret' }
+  if (rarityRank >= 6) return { label: 'Ultra Rare', tone: 'ultra' }
+  if (rarityRank >= 5) return { label: 'Hit Pull', tone: 'holo' }
+  if (isDoubleRareHit) return { label: 'Hit Pull', tone: 'ultra' }
+  return { label: null, tone: 'base' }
 }
 
 export default function RipRealmApp() {
